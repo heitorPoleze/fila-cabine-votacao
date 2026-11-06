@@ -24,7 +24,7 @@ npx nodemon            # ou npm run dev
 src/
   config/       env e pool do MySQL
   database/     schema.sql + migrate.ts
-  domain/       models (Candidato, Partido, Usuario) e a fila (DoublyLinkedList)
+  domain/       models e a fila (DoublyLinkedList)
   repository/   acesso ao banco
   services/     regras de negócio
   controllers/  handlers HTTP
