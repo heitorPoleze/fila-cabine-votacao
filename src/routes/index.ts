@@ -1,5 +1,12 @@
 import { Router } from "express";
+import usuarioRoutes from "./usuario.routes";
+import votoRoutes from "./voto.routes";
+import candidatoRoutes from "./candidato.routes";
 
-const routes = Router();
+const router = Router();
+const baseUrl = "/api/v1";
 
-export default routes;
+router.use(`${baseUrl}/usuarios`, usuarioRoutes);
+router.use(`${baseUrl}`, votoRoutes, candidatoRoutes);
+
+export default router;
