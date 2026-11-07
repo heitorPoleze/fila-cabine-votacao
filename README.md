@@ -25,6 +25,7 @@ Todas as rotas ficam em `/api/v1`. A collection do Postman com todas elas está 
 **Para usar:** no Postman, **Import** → arraste o arquivo.
 
 > **Mudou, criou ou removeu uma rota? Atualize a collection no mesmo commit.**
+
 > **Mudou um model? Atualize o `schema.sql` no mesmo commit. Como não há versionamento de migrações, para alterar uma tabela que já existe é preciso dropá-la ou rodar um `ALTER` manual.
 ## Estrutura
 
