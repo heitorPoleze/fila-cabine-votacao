@@ -23,39 +23,21 @@ Todas as rotas ficam em `/api/v1`. A collection do Postman com todas elas está 
 [`postman/fila-cabine-votacao.postman_collection.json`](postman/fila-cabine-votacao.postman_collection.json).
 
 **Para usar:** no Postman, **Import** → arraste o arquivo. As requests ficam separadas nas pastas Usuários, Voto e Candidatos (Resultado fica em Candidatos).
-
-- `baseUrl` (variável da collection) vale `http://localhost:3000/api/v1`. Mude se usar outra `PORT`.
-- **Criar usuário** guarda o `idUsuario` retornado na variável `idUsuario`, que as outras requests já usam.
-- `idCandidato` começa em `2` (Lula). Os candidatos iniciais são `1` Anular, `2` Lula e `3` Flávio Bolsonaro.
-
-| Método | Rota | Envia | Resposta |
-|---|---|---|---|
-| POST | `/usuarios` | `{nome, tipoFila: "PREFERENCIAL" \| "COMUM"}` | `201 {idUsuario, posicaoFila}` |
-| GET | `/usuarios/posicao-na-fila?idUsuario=` | query | `200 {idUsuario, posicaoFila}` · 404 |
-| POST | `/usuarios/logout` | `{idUsuario}` | `204` · 404 |
-| POST | `/voto` | `{idUsuario, idCandidato}` | `201 [{idCandidato, qtdVotosTotal}]` · 403 · 404 · 409 |
-| GET | `/candidatos` | — | `200 [{id, nome, partido, urlFoto}]` |
-| GET | `/resultado` | — | `200 [{id, nome, partido, urlFoto, qtdVotosTotal}]` |
-
-`posicaoFila` começa em 1 (primeiro da fila = 1). Body ou query inválidos respondem `400 REQUISICAO_INVALIDA`.
-
-> **Mudou, criou ou removeu uma rota? Atualize a collection no mesmo commit.** Faça a alteração no Postman, exporte em
-> **Collection v2.1** e sobrescreva o arquivo em `postman/`. Depois, atualize a tabela acima.
-
+> **Mudou, criou ou removeu uma rota? Atualize a collection no mesmo commit.**
 
 ## Estrutura
 
 ```
 src/
-  config/       env e pool do MySQL
-  database/     schema.sql + migrate.ts
-  domain/       models e a fila (DoublyLinkedList)
-  repository/   acesso ao banco
-  services/     regras de negócio
-  controllers/  handlers HTTP
-  routes/       rotas do Express (uma por domínio + validação com express-validator)
-  middlewares/  middlewares do Express (ex.: validarRequisicao)
-postman/        collection do Postman com todas as rotas
+  config/       
+  database/     
+  domain/       
+  repository/   
+  services/     
+  controllers/  
+  routes/       
+  middlewares/  
+postman/       
 ```
 
 ## Convenções
