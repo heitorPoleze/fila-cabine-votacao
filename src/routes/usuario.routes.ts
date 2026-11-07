@@ -16,15 +16,6 @@ router.post(
   usuarioController.criar.bind(usuarioController)
 );
 
-router.post(
-  "/logout",
-  [
-    body("idUsuario").isInt({ min: 1 }).withMessage("idUsuario deve ser um inteiro positivo").toInt(),
-  ],
-  validarRequisicao,
-  usuarioController.logout.bind(usuarioController)
-);
-
 router.get(
   "/posicao-na-fila",
   [

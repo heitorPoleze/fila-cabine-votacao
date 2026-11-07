@@ -15,15 +15,6 @@ export class UsuarioController {
     res.status(201).json({ idUsuario: usuario.id, posicaoFila: usuario.posicaoNaFila });
   }
 
-  async logout(req: Request, res: Response): Promise<void> {
-    const { idUsuario } = req.body;
-
-    const usuario = await this.usuarioServices.buscarPorUsuario(idUsuario);
-    await this.usuarioServices.excluir(usuario);
-
-    res.status(204).send();
-  }
-
   async lugarNaFila(req: Request, res: Response): Promise<void> {
     const idUsuario = Number(req.query.idUsuario);
 

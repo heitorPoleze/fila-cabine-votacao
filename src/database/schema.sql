@@ -31,15 +31,13 @@ CREATE TABLE IF NOT EXISTS candidatos (
 CREATE TABLE IF NOT EXISTS usuarios (
   id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
   nome            VARCHAR(150) NOT NULL,
-  posicao_na_fila INT UNSIGNED NULL DEFAULT NULL,
   tipo_fila       ENUM('PREFERENCIAL', 'COMUM') NOT NULL,
   id_candidato_votado INT UNSIGNED NULL DEFAULT NULL,
   CONSTRAINT pk_usuario PRIMARY KEY (id),
   CONSTRAINT fk_usuario_candidato FOREIGN KEY (id_candidato_votado)
     REFERENCES candidatos (id)
     ON UPDATE CASCADE
-    ON DELETE RESTRICT,
-  INDEX idx_usuario_fila (tipo_fila, posicao_na_fila)
+    ON DELETE RESTRICT
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- Dados iniciais (INSERT IGNORE: rodar a migração de novo não duplica)

@@ -17,6 +17,10 @@
     {
       "key": "idCandidato",
       "value": "2"
+    },
+    {
+      "key": "tipoFila",
+      "value": "comum"
     }
   ],
   "item": [
@@ -118,6 +122,174 @@
                   "language": "json"
                 }
               }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Fila",
+      "description": "Operações da fila. {{tipoFila}} = comum ou preferencial.",
+      "item": [
+        {
+          "name": "Exibir fila",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/fila/{{tipoFila}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fila",
+                "{{tipoFila}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Enfileirar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/fila/{{tipoFila}}/enfileirar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fila",
+                "{{tipoFila}}",
+                "enfileirar"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idUsuario\": {{idUsuario}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Desenfileirar",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/fila/{{tipoFila}}/desenfileirar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fila",
+                "{{tipoFila}}",
+                "desenfileirar"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Primeiro",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/fila/{{tipoFila}}/primeiro",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fila",
+                "{{tipoFila}}",
+                "primeiro"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Está vazia",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/fila/{{tipoFila}}/vazia",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fila",
+                "{{tipoFila}}",
+                "vazia"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Posição do usuário",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/fila/{{tipoFila}}/posicao?idUsuario={{idUsuario}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fila",
+                "{{tipoFila}}",
+                "posicao"
+              ],
+              "query": [
+                {
+                  "key": "idUsuario",
+                  "value": "{{idUsuario}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Inverter",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/fila/{{tipoFila}}/inverter",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fila",
+                "{{tipoFila}}",
+                "inverter"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Limpar",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/fila/{{tipoFila}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fila",
+                "{{tipoFila}}"
+              ]
             }
           }
         }

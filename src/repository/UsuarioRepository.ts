@@ -8,15 +8,15 @@ import type { VotoResultado } from "../domain/voto/VotoResultado";
 export class UsuarioRepository {
     async salvar(usuario: Usuario): Promise<Usuario> {
         const [result] = await pool.query<ResultSetHeader>(
-            "INSERT INTO usuarios (nome, posicao_na_fila, tipo_fila) VALUES (?, ?, ?)",
-            [usuario.nome, usuario.posicaoNaFila, usuario.tipoFila]
+            "INSERT INTO usuarios (nome, tipo_fila) VALUES (?, ?)",
+            [usuario.nome, usuario.tipoFila]
         );
 
         if (result.affectedRows === 0) {
             throw new BancoDeDadosError("Nenhuma linha inserida ao salvar o usuário");
         }
 
-        return new Usuario(usuario.nome, usuario.tipoFila, usuario.posicaoNaFila, result.insertId);
+        return new Usuario(usuario.nome, usuario.tipoFila, undefined, result.insertId);
     }
 
     async excluir(usuarioId: number): Promise<boolean> {

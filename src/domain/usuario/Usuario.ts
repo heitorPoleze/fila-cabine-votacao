@@ -5,7 +5,6 @@ import type { IComparable } from "../fila/IComparable";
 export interface UsuarioRow extends RowDataPacket {
   id: number;
   nome: string;
-  posicao_na_fila: number;
   tipo_fila: TipoFila;
   id_candidato_votado: number | null;
 }
@@ -23,7 +22,6 @@ export class Usuario implements IComparable {
   private _tipoFila: TipoFila;
   private _posicaoNaFila?: number;
   private _id?: number;
-  /** id do candidato em quem o usuário votou; null enquanto não votou. */
   private _candidatoVotado: number | null;
 
   constructor(
@@ -88,7 +86,7 @@ export class Usuario implements IComparable {
     return new Usuario(
       row.nome,
       row.tipo_fila,
-      row.posicao_na_fila,
+      undefined, // a posição não fica no banco: vem da fila em memória
       row.id,
       row.id_candidato_votado ?? null,
     );
@@ -113,6 +111,10 @@ export class Usuario implements IComparable {
     const a = this.posicaoNaFila ?? Number.MAX_SAFE_INTEGER;
     const b = other.posicaoNaFila ?? Number.MAX_SAFE_INTEGER;
     return a - b;
+  }
+
+  toString(): string {
+    return `#${this.id} ${this.nome} (${this.tipoFila})`;
   }
 
   toJSON(): UsuarioJSON {
