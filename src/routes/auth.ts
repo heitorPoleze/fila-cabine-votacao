@@ -1,25 +1,18 @@
 import { Router } from "express";
-import { authService, tokenDaRequisicao } from "../services/AuthService";
+import { authController } from "../controllers/AuthController";
 
 const auth = Router();
 
-auth.post("/login", async (req, res) => {
-  const sessao = await authService.login(req.body?.nome, req.body?.senha);
-  if (!sessao) {
-    res.status(401).json({ error: "Nome ou senha incorretos" });
-    return;
-  }
-  res.json(sessao);
-});
+/**
+ * POST /auth/login e POST /api/v1/auth/login
+ * Autenticação administrativa com retorno de sessão e token Bearer.
+ */
+auth.post("/login", authController.login.bind(authController));
 
-/** Confere se o token salvo no navegador ainda vale (usado ao recarregar a página). */
-auth.get("/me", (req, res) => {
-  const admin = authService.verificar(tokenDaRequisicao(req));
-  if (!admin) {
-    res.status(401).json({ error: "Sessão expirada" });
-    return;
-  }
-  res.json({ nome: admin.nome, expiraEm: new Date(admin.exp).toISOString() });
-});
+/**
+ * GET /auth/me e GET /api/v1/auth/me
+ * Valida a integridade e expiração do token de sessão administrativa.
+ */
+auth.get("/me", authController.me.bind(authController));
 
 export default auth;

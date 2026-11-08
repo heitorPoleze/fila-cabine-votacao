@@ -1,52 +1,43 @@
 import { Router } from "express";
+import { filaPublicController } from "../controllers/FilaPublicController";
+import { capturarDispositivo } from "../middlewares/capturarDispositivo";
 import { exigirAdmin } from "../services/AuthService";
-import { filaService } from "../services/FilaService";
 
 const fila = Router();
 
-// ---- público
+// ---- público (front / painel de exibição da fila em tempo real)
 
-/** Estado completo das filas e da cabine. */
-fila.get("/", (_req, res) => {
-  res.json(filaService.estado());
-});
+/** Estado completo das filas e da cabine (contexto ativo: mock ou real). */
+fila.get("/", filaPublicController.estado.bind(filaPublicController));
 
 /** Posição atual de todos que estão na fila e quem pode votar agora. */
-fila.get("/posicoes", (_req, res) => {
-  res.json(filaService.posicoes());
-});
+fila.get("/posicoes", filaPublicController.posicoes.bind(filaPublicController));
 
-/** Entrar na fila (o front usa o WebSocket, mas a rota fica disponível). */
-fila.post("/", async (req, res) => {
-  res.status(201).json(await filaService.entrar(req.body?.nome, req.body?.tipoFila));
-});
+/** Entrar na fila real (com trava de dispositivo único). */
+fila.post("/", capturarDispositivo, filaPublicController.entrar.bind(filaPublicController));
 
 // ---- administrador
 
-/** Chama o próximo para a cabine (proximoAVotar). */
-fila.post("/proximo", exigirAdmin, async (_req, res) => {
-  res.json(await filaService.proximoAVotar());
-});
+/** Chama o próximo para a cabine respeitando a proporção calculada (proximoAVotar). */
+fila.post("/proximo", exigirAdmin, filaPublicController.proximo.bind(filaPublicController));
 
-/** Libera a cabine sem voto; o próximo é chamado automaticamente. */
-fila.post("/liberar", exigirAdmin, async (_req, res) => {
-  await filaService.liberarCabine();
-  res.json(filaService.estado());
-});
+/** Libera a cabine sem voto. */
+fila.post("/liberar", exigirAdmin, filaPublicController.liberar.bind(filaPublicController));
 
-/** Coloca 10 pessoas de demonstração na fila. */
-fila.post("/mock", exigirAdmin, async (_req, res) => {
-  res.status(201).json(await filaService.popularMock());
-});
+/** Status do modo Mock vs Fila Real. */
+fila.get("/mock", exigirAdmin, filaPublicController.statusMock.bind(filaPublicController));
 
-/** Recomeça do zero: filas, cabine, votos e senhas zerados; fila cheia de novo. */
-fila.post("/reiniciar", exigirAdmin, async (_req, res) => {
-  res.json(await filaService.reiniciar());
-});
+/** Ativa e popula pessoas de demonstração na fila Mock (sem afetar a fila real). */
+fila.post("/mock", exigirAdmin, filaPublicController.popularMock.bind(filaPublicController));
+
+/** Desabilita o modo Mock sem afetar a fila real nem os votos reais. */
+fila.post("/mock/desativar", exigirAdmin, filaPublicController.desativarMock.bind(filaPublicController));
+fila.delete("/mock", exigirAdmin, filaPublicController.desativarMock.bind(filaPublicController));
+
+/** Reinicia o contexto atual (`?escopo=real` reinicia a eleição oficial; padrão reinicia apenas o mock). */
+fila.post("/reiniciar", exigirAdmin, filaPublicController.reiniciar.bind(filaPublicController));
 
 /** Tira alguém da fila; quem estava atrás anda uma posição. */
-fila.delete("/:id", exigirAdmin, async (req, res) => {
-  res.json(await filaService.remover(Number(req.params.id)));
-});
+fila.delete("/:id", exigirAdmin, filaPublicController.remover.bind(filaPublicController));
 
 export default fila;

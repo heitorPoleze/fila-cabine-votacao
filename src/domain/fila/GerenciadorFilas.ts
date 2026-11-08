@@ -3,22 +3,54 @@ import type { Usuario } from "../usuario/Usuario";
 import { CondicaoFila } from "./CondicaoFila";
 import type { Fila } from "./Fila";
 import type { FilaFactory } from "./FilaFactory";
+import type { IComparable } from "./IComparable";
+
+export interface ResumoProporcaoFila {
+    condicao: CondicaoFila;
+    limitePreferenciaisSeguidos: number;
+    preferenciaisChamadosSeguidos: number;
+    razaoAtendimento: string;
+    comportamento: string;
+    qtdPreferencial: number;
+    qtdComum: number;
+    percentualPreferencialSobreComum: number | null;
+}
 
 /**
- * Decide a sequência de chamada entre a fila preferencial e a comum.
- *
- * Com as duas filas com gente, a preferencial pode passar na frente algumas vezes
- * seguidas, conforme o tamanho dela em relação à comum (CondicaoFila):
- *   - preferencial ≤ 25% da comum → 1 preferencial seguido;
- *   - preferencial ≤ 50% da comum → 3 seguidos;
- *   - preferencial  > 50% da comum → 5 seguidos.
- * Atingido o limite, chama 1 da comum. Se uma fila está vazia, chama da outra.
+ * Percorre todos os elementos de uma Fila utilizando EXCLUSIVAMENTE
+ * operações FIFO do TAD Fila (desenfileirar + enfileirar), preservando
+ * integralmente a ordem original em O(n) sem violar o encapsulamento.
+ */
+export function listarElementosFifo<T extends IComparable>(fila: Fila<T>): T[] {
+    const total = fila.tamanho;
+    const elementos: T[] = [];
+    for (let i = 0; i < total; i++) {
+        const elemento = fila.desenfileirar()!;
+        elementos.push(elemento);
+        fila.enfileirar(elemento);
+    }
+    return elementos;
+}
+
+/**
+ * Decide dinamicamente a sequência de chamada entre a fila preferencial e a comum
+ * conforme a Seção 1.3 do documento de especificação:
+ *   - preferencial ≤ 25% da comum → 1 Prioritário / 1 Normal (alternância 1 a 1);
+ *   - preferencial ≤ 50% da comum → 3 Prioritários / 1 Normal;
+ *   - preferencial  > 50% da comum → 5 Prioritários / 1 Normal.
+ * Se uma das filas estiver vazia, atende imediatamente a outra.
  */
 export class GerenciadorFilas {
     private static readonly LIMITE_PREFERENCIAIS: Record<CondicaoFila, number> = {
         [CondicaoFila.PreferencialAte25]: 1,
         [CondicaoFila.PreferencialAte50]: 3,
         [CondicaoFila.PreferencialMaisQue50]: 5,
+    };
+
+    private static readonly COMPORTAMENTO: Record<CondicaoFila, string> = {
+        [CondicaoFila.PreferencialAte25]: "Alternância simples um a um (≤ 25% dos comuns)",
+        [CondicaoFila.PreferencialAte50]: "Atende 3 preferenciais para cada 1 normal (≤ 50% dos comuns)",
+        [CondicaoFila.PreferencialMaisQue50]: "Prioridade alta: 5 preferenciais para cada 1 normal (> 50% dos comuns)",
     };
 
     private readonly filaPreferencial: Fila<Usuario>;
@@ -29,22 +61,32 @@ export class GerenciadorFilas {
         this.filaComum = filaFactory.filaPorTipo(TipoFila.Comum);
     }
 
-    private static condicaoPara(preferenciais: number, comuns: number): CondicaoFila {
+    static condicaoPara(preferenciais: number, comuns: number): CondicaoFila {
         if (preferenciais * 4 <= comuns) return CondicaoFila.PreferencialAte25;
         if (preferenciais * 2 <= comuns) return CondicaoFila.PreferencialAte50;
         return CondicaoFila.PreferencialMaisQue50;
     }
 
-    /** Escolhe a preferencial? (as duas filas com gente) */
-    private static vezDaPreferencial(preferenciais: number, comuns: number, preferenciaisSeguidos: number): boolean {
+    /** Escolhe a fila preferencial considerando o estado atual e os atendimentos seguidos. */
+    private static vezDaPreferencial(
+        preferenciais: number,
+        comuns: number,
+        preferenciaisSeguidos: number,
+    ): boolean {
         if (preferenciais === 0) return false;
         if (comuns === 0) return true;
-        const limite = GerenciadorFilas.LIMITE_PREFERENCIAIS[GerenciadorFilas.condicaoPara(preferenciais, comuns)];
+        const limite =
+            GerenciadorFilas.LIMITE_PREFERENCIAIS[
+                GerenciadorFilas.condicaoPara(preferenciais, comuns)
+            ];
         return preferenciaisSeguidos < limite;
     }
 
     condicao(): CondicaoFila {
-        return GerenciadorFilas.condicaoPara(this.filaPreferencial.tamanho, this.filaComum.tamanho);
+        return GerenciadorFilas.condicaoPara(
+            this.filaPreferencial.tamanho,
+            this.filaComum.tamanho,
+        );
     }
 
     /** Quantos preferenciais podem ser chamados seguidos na condição atual. */
@@ -52,7 +94,25 @@ export class GerenciadorFilas {
         return GerenciadorFilas.LIMITE_PREFERENCIAIS[this.condicao()];
     }
 
-    /** Quem é o próximo a ser chamado para a cabine (não tira da fila). */
+    resumoProporcao(): ResumoProporcaoFila {
+        const qtdPreferencial = this.filaPreferencial.tamanho;
+        const qtdComum = this.filaComum.tamanho;
+        const condicao = this.condicao();
+        const limite = GerenciadorFilas.LIMITE_PREFERENCIAIS[condicao];
+        return {
+            condicao,
+            limitePreferenciaisSeguidos: limite,
+            preferenciaisChamadosSeguidos: this.filaPreferencial.qtdVotosAnteriores,
+            razaoAtendimento: `${limite} Prioritário(s) / 1 Normal`,
+            comportamento: GerenciadorFilas.COMPORTAMENTO[condicao],
+            qtdPreferencial,
+            qtdComum,
+            percentualPreferencialSobreComum:
+                qtdComum > 0 ? Math.round((qtdPreferencial / qtdComum) * 1000) / 10 : null,
+        };
+    }
+
+    /** Quem é o próximo a ser chamado para a cabine (acessa a frente sem remover). */
     proximoAVotar(): Usuario | undefined {
         if (this.filaPreferencial.estaVazia()) return this.filaComum.primeiro();
         if (this.filaComum.estaVazia()) return this.filaPreferencial.primeiro();
@@ -66,33 +126,38 @@ export class GerenciadorFilas {
             : this.filaComum.primeiro();
     }
 
-    /** Atualiza a contagem de "seguidos": a fila do chamado soma 1 e a outra zera. */
+    /** Atualiza a contagem de chamadas seguidas: a fila atendida soma 1 e a paralela zera. */
     registrarChamada(usuario: Usuario): void {
         this.filaFactory.filaDe(usuario).qtdVotosAnteriores++;
         this.filaFactory.filaParalelaDe(usuario).qtdVotosAnteriores = 0;
     }
 
-    /** Zera a contagem de "seguidos" (fila reiniciada). */
+    /** Zera a contagem de atendimentos seguidos. */
     zerarContagem(): void {
         this.filaPreferencial.qtdVotosAnteriores = 0;
         this.filaComum.qtdVotosAnteriores = 0;
     }
 
     /**
-     * Ordem em que todos que estão aguardando serão chamados, aplicando a mesma regra
-     * de proximoAVotar() passo a passo (sem mexer nas filas). Serve para dizer a cada
-     * um quantas pessoas tem à frente.
+     * Calcula a ordem global dinâmica de chamada simulando passo a passo a regra
+     * de proporção (1:1, 3:1 ou 5:1) sem alterar o estado das filas.
      */
     ordemDeChamada(): Usuario[] {
-        const pref = this.filaPreferencial.paraArray();
-        const comum = this.filaComum.paraArray();
+        const pref = listarElementosFifo(this.filaPreferencial);
+        const comum = listarElementosFifo(this.filaComum);
         let ip = 0;
         let ic = 0;
         let preferenciaisSeguidos = this.filaPreferencial.qtdVotosAnteriores;
         const ordem: Usuario[] = [];
 
         while (ip < pref.length || ic < comum.length) {
-            if (GerenciadorFilas.vezDaPreferencial(pref.length - ip, comum.length - ic, preferenciaisSeguidos)) {
+            if (
+                GerenciadorFilas.vezDaPreferencial(
+                    pref.length - ip,
+                    comum.length - ic,
+                    preferenciaisSeguidos,
+                )
+            ) {
                 ordem.push(pref[ip++]);
                 preferenciaisSeguidos++;
             } else {

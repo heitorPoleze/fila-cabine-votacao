@@ -10,3 +10,5 @@ export class FilaPreferencial extends Fila<Usuario> {
         super.enfileirar(usuario);
     }
 }
+
+Object.freeze(FilaPreferencial.prototype);

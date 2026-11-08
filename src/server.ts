@@ -1,7 +1,7 @@
 import { createServer } from "node:http";
 import app from "./app";
-import { env } from "./config/env";
 import { testConnection } from "./config/database";
+import { env } from "./config/env";
 import { attachFilaSocket } from "./controllers/filaSocket";
 import { aplicarSchema } from "./database/schema";
 import { authService } from "./services/AuthService";
@@ -9,7 +9,6 @@ import { filaService } from "./services/FilaService";
 
 async function bootstrap(): Promise<void> {
   try {
-    // Cria o banco e as tabelas que faltarem antes de qualquer consulta.
     await aplicarSchema();
     await testConnection();
     console.log("Conectado ao MySQL");
@@ -23,8 +22,6 @@ async function bootstrap(): Promise<void> {
     console.log(`Admin padrão criado: login "${env.ADMIN_USER}"`);
   }
 
-  // Ocupa a porta antes de mexer na fila: se já houver outro back rodando,
-  // este para aqui sem inserir nada no banco.
   const server = createServer(app);
   attachFilaSocket(server);
   await new Promise<void>((resolve) => {
@@ -47,9 +44,9 @@ async function bootstrap(): Promise<void> {
   });
 
   await filaService.carregar();
-  if (env.SEED_MOCK && filaService.totalAguardando === 0) {
+  if (env.SEED_MOCK && filaService.totalAguardandoMock === 0) {
     const mocks = await filaService.popularMock();
-    console.log(`${mocks.length} pessoas de demonstração colocadas na fila`);
+    console.log(`${mocks.length} pessoas de demonstração colocadas na fila Mock (isolada da fila real)`);
   }
 
   console.log(`Servidor rodando na porta ${env.PORT}`);

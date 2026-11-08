@@ -10,3 +10,5 @@ export class FilaComum extends Fila<Usuario> {
         super.enfileirar(usuario);
     }
 }
+
+Object.freeze(FilaComum.prototype);
