@@ -1,48 +1,63 @@
-import type { FilaFactory } from "../domain/fila/FilaFactory";
-import type { GerenciadorFilas } from "../domain/fila/GerenciadorFilas";
-import type { Usuario } from "../domain/usuario/Usuario";
-import type { VotoResultado } from "../domain/voto/VotoResultado";
-import { ProibidoError } from "../errors";
-import type { UsuarioRepository } from "../repository/UsuarioRepository";
+import type { DispositivoIdentificado } from "../domain/dispositivo/Dispositivo";
+import type { TipoFila } from "../domain/usuario/TipoFila";
+import type { UsuarioJSON } from "../domain/usuario/Usuario";
+import { NaoEncontradoError } from "../errors";
+import type {
+  FilaService,
+  ResultadoVoto,
+  UsuarioComChave,
+  UsuarioNaFila,
+} from "./FilaService";
 
+/**
+ * Regras do eleitor oficial para a API `/api/v1`.
+ * Opera sobre o contexto real do FilaService, aplicando a proporção dinâmica
+ * (GerenciadorFilas) e a trava de voto único por dispositivo.
+ */
 export class UsuarioServices {
-    constructor(
-        private readonly usuarioRepository: UsuarioRepository,
-        private readonly filaFactory: FilaFactory,
-        private readonly gerenciadorFilas: GerenciadorFilas,
-    ) {}
+  constructor(private readonly filaService: FilaService) {}
 
-    async salvar(usuario: Usuario): Promise<Usuario> {
-        const usuarioSalvo = await this.usuarioRepository.salvar(usuario);
+  /** Cadastra eleitor na fila real, vinculando dispositivo e retornando posição global (1-based). */
+  salvar(
+    nome: string,
+    tipoFila: TipoFila,
+    dispositivo?: DispositivoIdentificado,
+    tempoRequisicaoMs?: number,
+  ): Promise<UsuarioComChave> {
+    return this.filaService.entrar(nome, tipoFila, dispositivo, tempoRequisicaoMs);
+  }
 
-        const fila = this.filaFactory.filaDe(usuarioSalvo);
-        fila.enfileirar(usuarioSalvo);
+  /** Busca o usuário aguardando (ou na cabine) na fila real com sua posição atual (começa em 1). */
+  buscarPorUsuario(usuarioId: number): UsuarioNaFila {
+    const usuario = this.filaService.buscarReal(usuarioId);
+    if (!usuario) throw new NaoEncontradoError("Usuário na fila", usuarioId);
+    return usuario;
+  }
 
-        usuarioSalvo.posicaoNaFila = fila.posicaoDe(usuarioSalvo) + 1;
+  /** Quem é o próximo a votar segundo o GerenciadorFilas. */
+  proximoAVotar(): UsuarioJSON | null {
+    return this.filaService.proximoDaVez();
+  }
 
-        return usuarioSalvo;
-    }
+  /** Registra o voto validando candidato, duplicidade de usuário/dispositivo e vez na fila. */
+  votar(
+    usuarioId: number,
+    candidatoId: number,
+    dispositivo?: DispositivoIdentificado,
+    tempoRequisicaoMs?: number,
+  ): Promise<ResultadoVoto> {
+    return this.filaService.votarPelaApi(
+      usuarioId,
+      candidatoId,
+      dispositivo,
+      tempoRequisicaoMs,
+    );
+  }
 
-    async buscarPorUsuario(usuarioId: number): Promise<Usuario> {
-        const usuario = await this.usuarioRepository.buscarPorId(usuarioId);
-        usuario.posicaoNaFila = this.filaFactory.filaDe(usuario).posicaoDe(usuario);
-        return usuario;
-    }
-
-    proximoAVotar(): Usuario | undefined {
-        return this.gerenciadorFilas.proximoAVotar();
-    }
-
-    async votar(usuario: Usuario, candidatoId: number): Promise<VotoResultado> {
-        if (!this.proximoAVotar()?.equals(usuario)) {
-            throw new ProibidoError("Ainda não é a vez deste usuário votar");
-        }
-        const fila = this.filaFactory.filaDe(usuario);
-        const voto = await this.usuarioRepository.votar(usuario.id!, candidatoId);
-        fila.qtdVotosAnteriores++;
-        this.filaFactory.filaParalelaDe(usuario).qtdVotosAnteriores = 0;
-        fila.desenfileirar();
-
-        return voto;
-    }
+  /** Permite ao usuário desistir/sair da fila antes de votar (logout). */
+  sairDaFila(usuarioId: number, tempoRequisicaoMs?: number): Promise<UsuarioJSON> {
+    const existente = this.filaService.buscarReal(usuarioId);
+    if (!existente) throw new NaoEncontradoError("Usuário na fila", usuarioId);
+    return this.filaService.remover(usuarioId, undefined, tempoRequisicaoMs);
+  }
 }

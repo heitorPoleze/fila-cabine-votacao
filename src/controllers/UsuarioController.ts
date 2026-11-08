@@ -1,29 +1,61 @@
 import type { Request, Response } from "express";
-import { Usuario } from "../domain/usuario/Usuario";
-import { NaoEncontradoError } from "../errors";
+import { obterDispositivo } from "../middlewares/capturarDispositivo";
+import { obterTempoEsperaRequisicaoMs } from "../middlewares/tempoRequisicao";
 import { usuarioServices } from "../services";
 import type { UsuarioServices } from "../services/UsuarioServices";
 
 export class UsuarioController {
   constructor(private readonly usuarioServices: UsuarioServices) {}
 
+  /**
+   * POST /api/v1/usuarios
+   * Cadastra um novo usuário eleitor na fila oficial e retorna seu id e posição ordinal (1-based).
+   */
   async criar(req: Request, res: Response): Promise<void> {
     const { nome, tipoFila } = req.body;
 
-    const usuario = await this.usuarioServices.salvar(new Usuario(nome, tipoFila));
+    const usuario = await this.usuarioServices.salvar(
+      nome,
+      tipoFila,
+      obterDispositivo(req),
+      obterTempoEsperaRequisicaoMs(req),
+    );
 
-    res.status(201).json({ idUsuario: usuario.id, posicaoFila: usuario.posicaoNaFila });
+    res.status(201).json({
+      idUsuario: usuario.id,
+      posicaoFila: usuario.posicaoGlobal,
+    });
   }
 
+  /**
+   * GET /api/v1/usuarios/posicao-na-fila?idUsuario=int e GET /api/v1/usuarios/:idUsuario/posicao
+   * Retorna a posição atual do eleitor na fila (1-based).
+   */
   async lugarNaFila(req: Request, res: Response): Promise<void> {
-    const idUsuario = Number(req.query.idUsuario);
+    const idUsuario = Number(req.params.idUsuario ?? req.query.idUsuario);
 
-    const usuario = await this.usuarioServices.buscarPorUsuario(idUsuario);
-    const indice = usuario.posicaoNaFila ?? -1;
-    if (indice < 0) {
-      throw new NaoEncontradoError("Usuário na fila", idUsuario);
-    }
-    res.status(200).json({ idUsuario, posicaoFila: indice + 1 }); //findIndex devolve a posição num array. Ou seja, 1o lugar = 0
+    const usuario = this.usuarioServices.buscarPorUsuario(idUsuario);
+
+    res.status(200).json({
+      idUsuario,
+      posicaoFila: usuario.posicaoGlobal,
+    });
+  }
+
+  /**
+   * DELETE /api/v1/usuarios/:idUsuario e POST /api/v1/usuarios/logout
+   * Remove o usuário da fila antes da votação (desistência voluntária).
+   */
+  async logout(req: Request, res: Response): Promise<void> {
+    const idUsuario = Number(req.params.idUsuario ?? req.body?.idUsuario);
+    const removido = await this.usuarioServices.sairDaFila(
+      idUsuario,
+      obterTempoEsperaRequisicaoMs(req),
+    );
+    res.status(200).json({
+      idUsuario: removido.id,
+      removido,
+    });
   }
 }
 

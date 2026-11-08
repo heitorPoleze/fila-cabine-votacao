@@ -1,130 +1,120 @@
 import type { RowDataPacket } from "mysql2/promise";
-import { TipoFila } from "./TipoFila";
+import type { DispositivoIdentificado } from "../dispositivo/Dispositivo";
 import type { IComparable } from "../fila/IComparable";
+import type { TipoFila } from "./TipoFila";
 
 export interface UsuarioRow extends RowDataPacket {
   id: number;
   nome: string;
+  senha: number;
+  posicao_na_fila: number;
   tipo_fila: TipoFila;
-  id_candidato_votado: number | null;
+  entrou_em: Date;
+  chamado_em: Date | null;
+  chave: string;
+  mock: number | boolean;
+  ip: string | null;
+  mac: string | null;
+  nome_dispositivo: string | null;
+  fingerprint: string | null;
+  dispositivo_id: string | null;
 }
 
 export interface UsuarioJSON {
   id?: number;
   nome: string;
+  senha: number;
   posicaoNaFila: number;
   tipoFila: TipoFila;
-  candidatoVotado: number | null;
+  entrouEm: string;
+  chamadoEm: string | null;
+  mock: boolean;
+  ip: string | null;
+  mac: string | null;
+  nomeDispositivo: string | null;
+  fingerprint: string | null;
+  dispositivoId: string | null;
 }
 
 export class Usuario implements IComparable {
-  private _nome: string;
-  private _tipoFila: TipoFila;
-  private _posicaoNaFila?: number;
-  private _id?: number;
-  private _candidatoVotado: number | null;
+  public chamadoEm: Date | null;
+  public ip: string | null;
+  public mac: string | null;
+  public nomeDispositivo: string | null;
+  public fingerprint: string | null;
+  public dispositivoId: string | null;
 
   constructor(
-    nome: string,
-    tipoFila: TipoFila,
-    posicaoNaFila?: number,
-    id?: number,
-    candidatoVotado: number | null = null,
+    public nome: string,
+    public senha: number,
+    public posicaoNaFila: number,
+    public tipoFila: TipoFila,
+    public entrouEm: Date,
+    public chave: string,
+    public mock = false,
+    public id?: number,
+    dispositivo?: Partial<DispositivoIdentificado> | null,
+    chamadoEm: Date | null = null,
   ) {
-    this._nome = nome;
-    this._tipoFila = tipoFila;
-    this._posicaoNaFila = posicaoNaFila;
-    this._id = id;
-    this._candidatoVotado = candidatoVotado;
-  }
-
-  get nome(): string {
-    return this._nome;
-  }
-
-  set nome(nome: string) {
-    this._nome = nome;
-  }
-
-  get tipoFila(): TipoFila {
-    return this._tipoFila;
-  }
-
-  set tipoFila(tipoFila: TipoFila) {
-    this._tipoFila = tipoFila;
-  }
-
-  get posicaoNaFila(): number | undefined {
-    return this._posicaoNaFila;
-  }
-
-  set posicaoNaFila(posicaoNaFila: number | undefined) {
-    this._posicaoNaFila = posicaoNaFila;
-  }
-
-  get id(): number | undefined {
-    return this._id;
-  }
-
-  set id(id: number | undefined) {
-    this._id = id;
-  }
-
-  get candidatoVotado(): number | null {
-    return this._candidatoVotado;
-  }
-
-  set candidatoVotado(candidatoVotado: number | null) {
-    this._candidatoVotado = candidatoVotado;
-  }
-
-  get jaVotou(): boolean {
-    return this._candidatoVotado !== null;
+    this.chamadoEm = chamadoEm;
+    this.ip = dispositivo?.ip ?? null;
+    this.mac = dispositivo?.mac ?? null;
+    this.nomeDispositivo = dispositivo?.nomeDispositivo ?? null;
+    this.fingerprint = dispositivo?.fingerprint ?? null;
+    this.dispositivoId = dispositivo?.dispositivoId ?? null;
   }
 
   static fromRow(row: UsuarioRow): Usuario {
     return new Usuario(
       row.nome,
+      row.senha,
+      row.posicao_na_fila,
       row.tipo_fila,
-      undefined, // a posição não fica no banco: vem da fila em memória
+      new Date(row.entrou_em),
+      row.chave,
+      Boolean(row.mock),
       row.id,
-      row.id_candidato_votado ?? null,
+      {
+        ip: row.ip ?? undefined,
+        mac: row.mac ?? null,
+        nomeDispositivo: row.nome_dispositivo ?? undefined,
+        fingerprint: row.fingerprint ?? undefined,
+        dispositivoId: row.dispositivo_id ?? undefined,
+      },
+      row.chamado_em ? new Date(row.chamado_em) : null,
     );
   }
 
   equals(other: IComparable): boolean {
-    if (!(other instanceof Usuario)) return false;
-    if (this.id !== undefined && other.id !== undefined) {
-      return this.id === other.id;
-    }
-    return this.nome === other.nome && this.tipoFila === other.tipoFila;
+    return other instanceof Usuario && other.id !== undefined && other.id === this.id;
   }
-
 
   compareTo(other: IComparable): number {
     if (!(other instanceof Usuario)) {
-      throw new TypeError("Só é possível comparar Usuario com Usuario");
+      throw new Error("Usuario só pode ser comparado com outro Usuario");
     }
-    if (this.tipoFila !== other.tipoFila) {
-      return this.tipoFila === TipoFila.Preferencial ? -1 : 1;
-    }
-    const a = this.posicaoNaFila ?? Number.MAX_SAFE_INTEGER;
-    const b = other.posicaoNaFila ?? Number.MAX_SAFE_INTEGER;
-    return a - b;
-  }
-
-  toString(): string {
-    return `#${this.id} ${this.nome} (${this.tipoFila})`;
+    return this.posicaoNaFila - other.posicaoNaFila;
   }
 
   toJSON(): UsuarioJSON {
     return {
       id: this.id,
       nome: this.nome,
-      posicaoNaFila: this.posicaoNaFila!,
+      senha: this.senha,
+      posicaoNaFila: this.posicaoNaFila,
       tipoFila: this.tipoFila,
-      candidatoVotado: this.candidatoVotado,
+      entrouEm: this.entrouEm.toISOString(),
+      chamadoEm: this.chamadoEm?.toISOString() ?? null,
+      mock: this.mock,
+      ip: this.ip,
+      mac: this.mac,
+      nomeDispositivo: this.nomeDispositivo,
+      fingerprint: this.fingerprint,
+      dispositivoId: this.dispositivoId,
     };
   }
 
+  toString(): string {
+    return `#${this.id ?? "?"} [${this.tipoFila === "PREFERENCIAL" ? "P" : "C"}${String(this.senha).padStart(3, "0")}] ${this.nome} (${this.tipoFila})`;
+  }
 }

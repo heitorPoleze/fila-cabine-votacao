@@ -1,14 +1,22 @@
 {
   "info": {
-    "_postman_id": "15267457-7865-4e3d-bdf3-c00ab9dc9c1f",
+    "_postman_id": "b3a1c5d2-7e4f-4a68-9c21-5d8e0f7a1b34",
     "name": "fila-cabine-votacao",
-    "description": "Rotas da API fila-cabine-votacao. Base: {{baseUrl}} (padrão http://localhost:3000/api/v1). Erros vêm como {error, message}; body/query inválido → 400 REQUISICAO_INVALIDA.",
+    "description": "Rotas da API fila-cabine-votacao. Base: {{baseUrl}} (padrao http://localhost:3000/api/v1). Erros vem como {error, message}.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     {
       "key": "baseUrl",
       "value": "http://localhost:3000/api/v1"
+    },
+    {
+      "key": "serverUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "adminToken",
+      "value": ""
     },
     {
       "key": "idUsuario",
@@ -21,20 +29,105 @@
     {
       "key": "tipoFila",
       "value": "comum"
+    },
+    {
+      "key": "deviceToken",
+      "value": "dispositivo-teste-01"
     }
   ],
   "item": [
     {
-      "name": "Usuários",
+      "name": "1. Autenticacao Admin",
       "item": [
         {
-          "name": "Criar usuário",
+          "name": "Login do administrador",
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"admin\",\n  \"senha\": \"admin\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  pm.collectionVariables.set('adminToken', pm.response.json().token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validar sessao do administrador",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Usuarios e Dispositivo",
+      "item": [
+        {
+          "name": "Criar usuario (entrar na fila)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Device-Token",
+                "value": "{{deviceToken}}"
+              },
+              {
+                "key": "X-Device-Name",
+                "value": "Smartphone Sala 01"
               }
             ],
             "url": {
@@ -48,7 +141,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Maria\",\n  \"tipoFila\": \"COMUM\"\n}",
+              "raw": "{\n  \"nome\": \"Maria Silva\",\n  \"tipoFila\": \"COMUM\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -56,15 +149,15 @@
               }
             }
           },
+          "response": [],
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// 201 → {idUsuario, posicaoFila}. Guarda o id para as outras requests.",
                   "if (pm.response.code === 201) {",
-                  "  pm.collectionVariables.set(\"idUsuario\", pm.response.json().idUsuario);",
+                  "  pm.collectionVariables.set('idUsuario', String(pm.response.json().idUsuario));",
                   "}"
                 ]
               }
@@ -72,7 +165,7 @@
           ]
         },
         {
-          "name": "Posição na fila",
+          "name": "Posicao na fila (query param)",
           "request": {
             "method": "GET",
             "header": [],
@@ -92,10 +185,30 @@
                 }
               ]
             }
-          }
+          },
+          "response": []
         },
         {
-          "name": "Logout",
+          "name": "Posicao na fila (sub-recurso)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/{{idUsuario}}/posicao",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios",
+                "{{idUsuario}}",
+                "posicao"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Sair da fila (logout)",
           "request": {
             "method": "POST",
             "header": [
@@ -116,196 +229,74 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"idUsuario\": {{idUsuario}}\n}",
+              "raw": "{\n  \"idUsuario\": 1\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Fila",
-      "description": "Operações da fila. {{tipoFila}} = comum ou preferencial.",
-      "item": [
-        {
-          "name": "Exibir fila",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/fila/{{tipoFila}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "fila",
-                "{{tipoFila}}"
-              ]
-            }
-          }
+          },
+          "response": []
         },
         {
-          "name": "Enfileirar",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/fila/{{tipoFila}}/enfileirar",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "fila",
-                "{{tipoFila}}",
-                "enfileirar"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"idUsuario\": {{idUsuario}}\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "Desenfileirar",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/fila/{{tipoFila}}/desenfileirar",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "fila",
-                "{{tipoFila}}",
-                "desenfileirar"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Primeiro",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/fila/{{tipoFila}}/primeiro",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "fila",
-                "{{tipoFila}}",
-                "primeiro"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Está vazia",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/fila/{{tipoFila}}/vazia",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "fila",
-                "{{tipoFila}}",
-                "vazia"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Posição do usuário",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/fila/{{tipoFila}}/posicao?idUsuario={{idUsuario}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "fila",
-                "{{tipoFila}}",
-                "posicao"
-              ],
-              "query": [
-                {
-                  "key": "idUsuario",
-                  "value": "{{idUsuario}}"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Inverter",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/fila/{{tipoFila}}/inverter",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "fila",
-                "{{tipoFila}}",
-                "inverter"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Limpar",
+          "name": "Sair da fila (DELETE)",
           "request": {
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/fila/{{tipoFila}}",
+              "raw": "{{baseUrl}}/usuarios/{{idUsuario}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "fila",
-                "{{tipoFila}}"
+                "usuarios",
+                "{{idUsuario}}"
               ]
             }
-          }
+          },
+          "response": []
+        },
+        {
+          "name": "Status do dispositivo",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Device-Token",
+                "value": "{{deviceToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dispositivos/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dispositivos",
+                "status"
+              ]
+            }
+          },
+          "response": []
         }
       ]
     },
     {
-      "name": "Voto",
+      "name": "3. Voto e Candidatos",
       "item": [
         {
-          "name": "Votar",
+          "name": "Registrar voto (voto)",
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Device-Token",
+                "value": "{{deviceToken}}"
               }
             ],
             "url": {
@@ -319,20 +310,51 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"idUsuario\": {{idUsuario}},\n  \"idCandidato\": {{idCandidato}}\n}",
+              "raw": "{\n  \"idUsuario\": 1,\n  \"idCandidato\": 2\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Candidatos",
-      "item": [
+          },
+          "response": []
+        },
+        {
+          "name": "Registrar voto (votos)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Device-Token",
+                "value": "{{deviceToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/votos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "votos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idUsuario\": 1,\n  \"idCandidato\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
         {
           "name": "Listar candidatos",
           "request": {
@@ -347,10 +369,29 @@
                 "candidatos"
               ]
             }
-          }
+          },
+          "response": []
         },
         {
-          "name": "Resultado",
+          "name": "Buscar candidato por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/candidatos/{{idCandidato}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "candidatos",
+                "{{idCandidato}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Resultado (resultado)",
           "request": {
             "method": "GET",
             "header": [],
@@ -363,7 +404,679 @@
                 "resultado"
               ]
             }
-          }
+          },
+          "response": []
+        },
+        {
+          "name": "Resultado (resultados)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/resultados",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "resultados"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Relatorio de votos (admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/votos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "votos"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Filas - TAD Fila",
+      "description": "Operacoes da fila. {{tipoFila}} = comum ou preferencial.",
+      "item": [
+        {
+          "name": "Proporcao dinamica",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/filas/proporcao?escopo=mock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "filas",
+                "proporcao"
+              ],
+              "query": [
+                {
+                  "key": "escopo",
+                  "value": "mock"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Exibir elementos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/filas/{{tipoFila}}/elementos?escopo=mock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "filas",
+                "{{tipoFila}}",
+                "elementos"
+              ],
+              "query": [
+                {
+                  "key": "escopo",
+                  "value": "mock"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Inserir elemento (enfileirar)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/filas/{{tipoFila}}/elementos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "filas",
+                "{{tipoFila}}",
+                "elementos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Eleitor Demo\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Remover elemento (desenfileirar)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/filas/{{tipoFila}}/elementos/frente",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "filas",
+                "{{tipoFila}}",
+                "elementos",
+                "frente"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Acessar primeiro",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/filas/{{tipoFila}}/elementos/primeiro?escopo=mock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "filas",
+                "{{tipoFila}}",
+                "elementos",
+                "primeiro"
+              ],
+              "query": [
+                {
+                  "key": "escopo",
+                  "value": "mock"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Status da fila (estaVazia)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/filas/{{tipoFila}}/status?escopo=mock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "filas",
+                "{{tipoFila}}",
+                "status"
+              ],
+              "query": [
+                {
+                  "key": "escopo",
+                  "value": "mock"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Posicao de um elemento",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/filas/{{tipoFila}}/elementos/{{idUsuario}}/posicao?escopo=mock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "filas",
+                "{{tipoFila}}",
+                "elementos",
+                "{{idUsuario}}",
+                "posicao"
+              ],
+              "query": [
+                {
+                  "key": "escopo",
+                  "value": "mock"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Inverter fila",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/filas/{{tipoFila}}/inversao",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "filas",
+                "{{tipoFila}}",
+                "inversao"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Limpar fila",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/filas/{{tipoFila}}/elementos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "filas",
+                "{{tipoFila}}",
+                "elementos"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5. Admin - Mock, Dispositivos e Logs",
+      "item": [
+        {
+          "name": "Status do mock",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/mock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "mock"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Iniciar mock",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/mock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "mock"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"qtdPreferencial\": 4,\n  \"qtdComum\": 10,\n  \"limparAntes\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Encerrar mock",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/mock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "mock"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Chamar proximo (mock)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/mock/chamadas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "mock",
+                "chamadas"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Listar dispositivos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/dispositivos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "dispositivos"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Logs de auditoria (admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/logs?limite=100&escopo=real",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "logs"
+              ],
+              "query": [
+                {
+                  "key": "limite",
+                  "value": "100"
+                },
+                {
+                  "key": "escopo",
+                  "value": "real"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Logs de transparencia",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{serverUrl}}/api/logs?limite=100&escopo=real",
+              "host": [
+                "{{serverUrl}}"
+              ],
+              "path": [
+                "api",
+                "logs"
+              ],
+              "query": [
+                {
+                  "key": "limite",
+                  "value": "100"
+                },
+                {
+                  "key": "escopo",
+                  "value": "real"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "6. Painel e Cabine Tempo Real",
+      "item": [
+        {
+          "name": "Estado das filas e cabine",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{serverUrl}}/fila",
+              "host": [
+                "{{serverUrl}}"
+              ],
+              "path": [
+                "fila"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Posicoes em tempo real",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{serverUrl}}/fila/posicoes",
+              "host": [
+                "{{serverUrl}}"
+              ],
+              "path": [
+                "fila",
+                "posicoes"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Entrar na fila (ticket)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{serverUrl}}/fila",
+              "host": [
+                "{{serverUrl}}"
+              ],
+              "path": [
+                "fila"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Joao Souza\",\n  \"tipoFila\": \"PREFERENCIAL\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Chamar proximo para cabine",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{serverUrl}}/fila/proximo",
+              "host": [
+                "{{serverUrl}}"
+              ],
+              "path": [
+                "fila",
+                "proximo"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Liberar cabine",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{serverUrl}}/fila/liberar",
+              "host": [
+                "{{serverUrl}}"
+              ],
+              "path": [
+                "fila",
+                "liberar"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reiniciar fila",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{serverUrl}}/fila/reiniciar",
+              "host": [
+                "{{serverUrl}}"
+              ],
+              "path": [
+                "fila",
+                "reiniciar"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Votar na cabine com chave",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{serverUrl}}/votos",
+              "host": [
+                "{{serverUrl}}"
+              ],
+              "path": [
+                "votos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuarioId\": 1,\n  \"chave\": \"00000000000000000000000000000000\",\n  \"candidatoId\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Resultado no contexto ativo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{serverUrl}}/votos/resultado",
+              "host": [
+                "{{serverUrl}}"
+              ],
+              "path": [
+                "votos",
+                "resultado"
+              ]
+            }
+          },
+          "response": []
         }
       ]
     }

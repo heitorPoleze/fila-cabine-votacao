@@ -7,7 +7,7 @@
     "dev": "nodemon",
     "start": "tsx src/server.ts",
     "db:migrate": "tsx src/database/migrate.ts",
-    "db:add-candidato-votado": "tsx src/database/add-candidato-votado.ts",
+    "postman:import": "tsx src/database/importar-postman.ts",
     "typecheck": "tsc --noEmit"
   },
   "repository": {
@@ -24,15 +24,22 @@
   "homepage": "https://github.com/heitorPoleze/fila-cabine-votacao#readme",
   "devDependencies": {
     "@types/express": "^5.0.6",
-    "@types/node": "^26.6.6",
+    "@types/node": "^24.19.2",
+    "@types/ws": "^8.18.2",
     "nodemon": "^3.1.14",
     "tsx": "^4.23.15",
-    "typescript": "^7.0.2"
+    "typescript": "^5.9.3"
   },
   "dependencies": {
     "dotenv": "^18.0.9",
     "express": "^5.3.0",
+    "express-rate-limit": "^8.7.3",
     "express-validator": "^7.3.2",
-    "mysql2": "^3.24.6"
+    "helmet": "^8.3.0",
+    "mysql2": "^3.24.6",
+    "ws": "^8.22.1"
+  },
+  "overrides": {
+    "minimatch": "^11.0.5"
   }
 }
