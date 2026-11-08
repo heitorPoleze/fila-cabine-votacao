@@ -1,10 +1,13 @@
 import type { Request, Response } from "express";
 import { NaoEncontradoError } from "../errors";
-import { candidatoServices } from "../services";
+import { candidatoServices, filaService } from "../services";
 import type { CandidatoServices } from "../services/CandidatoServices";
 
+/** `?escopo=mock|real` força o escopo; sem ele, segue o modo ativo (igual ao relatório de votos). */
 function extrairMock(req: Request): boolean {
-  return req.query.escopo === "mock";
+  if (req.query.escopo === "mock") return true;
+  if (req.query.escopo === "real") return false;
+  return filaService.modoMock;
 }
 
 export class CandidatoController {
