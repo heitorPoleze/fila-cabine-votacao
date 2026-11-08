@@ -1,20 +1,67 @@
+import { createServer } from "node:http";
 import app from "./app";
 import { env } from "./config/env";
 import { testConnection } from "./config/database";
+import { attachFilaSocket } from "./controllers/filaSocket";
+import { aplicarSchema } from "./database/schema";
+import { authService } from "./services/AuthService";
+import { filaService } from "./services/FilaService";
 
 async function bootstrap(): Promise<void> {
   try {
+    // Cria o banco e as tabelas que faltarem antes de qualquer consulta.
+    await aplicarSchema();
     await testConnection();
     console.log("Conectado ao MySQL");
   } catch (err) {
     const { code, message } = err as NodeJS.ErrnoException;
-    console.error("Falha ao conectar ao MySQL:", code ?? "", message);
+    console.error("Falha ao preparar o MySQL:", code ?? "", message);
     process.exit(1);
   }
 
-  app.listen(env.PORT, () => {
-    console.log(`Servidor rodando na porta ${env.PORT}`);
+  if (await authService.garantirAdminPadrao()) {
+    console.log(`Admin padrão criado: login "${env.ADMIN_USER}"`);
+  }
+
+  // Ocupa a porta antes de mexer na fila: se já houver outro back rodando,
+  // este para aqui sem inserir nada no banco.
+  const server = createServer(app);
+  attachFilaSocket(server);
+  await new Promise<void>((resolve) => {
+    server.once("error", (err: NodeJS.ErrnoException) => {
+      if (err.code === "EADDRINUSE") {
+        console.error(
+          [
+            "",
+            `A porta ${env.PORT} já está em uso: já existe um back rodando (outro terminal ou nodemon).`,
+            "Feche o outro servidor ou mude PORT no .env e rode de novo.",
+            "",
+          ].join("\n"),
+        );
+      } else {
+        console.error("Falha no servidor HTTP:", err.message);
+      }
+      process.exit(1);
+    });
+    server.listen(env.PORT, resolve);
   });
+
+  await filaService.carregar();
+  if (env.SEED_MOCK && filaService.totalAguardando === 0) {
+    const mocks = await filaService.popularMock();
+    console.log(`${mocks.length} pessoas de demonstração colocadas na fila`);
+  }
+
+  console.log(`Servidor rodando na porta ${env.PORT}`);
+  console.log(`WebSocket em ws://localhost:${env.PORT}/ws`);
+  console.log(
+    env.CHAMADA_AUTOMATICA
+      ? "Chamada automática: o próximo entra na cabine assim que ela fica livre"
+      : "Chamada manual: o administrador chama cada pessoa para a cabine",
+  );
 }
 
-bootstrap();
+bootstrap().catch((err) => {
+  console.error("Falha ao iniciar o servidor:", err);
+  process.exit(1);
+});
