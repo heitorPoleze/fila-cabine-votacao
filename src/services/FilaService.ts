@@ -1,16 +1,24 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { EventEmitter } from "node:events";
 import { env } from "../config/env";
-import { DoublyLinkedList } from "../domain/fila/DoublyLinkedList";
+import type { Fila } from "../domain/fila/Fila";
+import { FilaComum } from "../domain/fila/FilaComum";
+import { FilaFactory } from "../domain/fila/FilaFactory";
+import { FilaPreferencial } from "../domain/fila/FilaPreferencial";
+import { GerenciadorFilas } from "../domain/fila/GerenciadorFilas";
 import { TipoFila } from "../domain/usuario/TipoFila";
 import { Usuario, type UsuarioJSON } from "../domain/usuario/Usuario";
 import { Voto, type VotoJSON } from "../domain/voto/Voto";
 import { CandidatoRepository } from "../repository/CandidatoRepository";
 import { UsuarioRepository } from "../repository/UsuarioRepository";
+import { AppError, ProibidoError } from "../errors";
 import { VotoRepository, type ContagemCandidato } from "../repository/VotoRepository";
 
-/** Erro de regra de negócio: a mensagem pode ser mostrada ao usuário. */
-export class FilaError extends Error {}
+/** Erro de regra de negócio da fila (400): a mensagem pode ser mostrada ao usuário. */
+export class FilaError extends AppError {
+  readonly statusCode = 400;
+  readonly code = "REGRA_DA_FILA";
+}
 
 /** Usuário como aparece no estado: com quantas pessoas tem à frente até a cabine. */
 export interface UsuarioNaFila extends UsuarioJSON {
@@ -79,11 +87,13 @@ function gerarMocks(qtd: number): Array<[string, TipoFila]> {
 }
 
 /**
- * Mantém as duas filas (preferencial e comum) em memória, numa DoublyLinkedList,
+ * Mantém as duas filas (FilaPreferencial e FilaComum, sobre DoublyLinkedList) em memória
  * e espelha no MySQL quem está aguardando, para sobreviver a um restart do servidor.
  *
  * Regras:
- * - a fila preferencial tem prioridade sobre a comum;
+ * - a sequência entre preferencial e comum é decidida pelo GerenciadorFilas
+ *   (a preferencial passa 1, 3 ou 5 vezes seguidas conforme o tamanho dela
+ *   em relação à comum; depois chama 1 da comum);
  * - só uma pessoa ocupa a cabine por vez;
  * - o administrador chama o próximo com proximoAVotar() (ou, com CHAMADA_AUTOMATICA=true,
  *   ele é chamado sozinho assim que a cabine fica livre);
@@ -92,10 +102,10 @@ function gerarMocks(qtd: number): Array<[string, TipoFila]> {
  * Eventos: "mudou" (estado novo) e "proximo" (quem pode votar agora).
  */
 export class FilaService extends EventEmitter {
-  private readonly filas: Record<TipoFila, DoublyLinkedList<Usuario>> = {
-    [TipoFila.Preferencial]: new DoublyLinkedList<Usuario>(),
-    [TipoFila.Comum]: new DoublyLinkedList<Usuario>(),
-  };
+  private readonly filaPreferencial = new FilaPreferencial();
+  private readonly filaComum = new FilaComum();
+  private readonly filaFactory = new FilaFactory(this.filaPreferencial, this.filaComum);
+  private readonly gerenciador = new GerenciadorFilas(this.filaFactory);
   private readonly proximaSenha: Record<TipoFila, number> = {
     [TipoFila.Preferencial]: 1,
     [TipoFila.Comum]: 1,
@@ -126,21 +136,22 @@ export class FilaService extends EventEmitter {
   carregar(): Promise<void> {
     return this.exclusivo(async () => {
       const usuarios = await this.repo.listarTodos();
-      for (const fila of Object.values(this.filas)) fila.clear();
+      for (const fila of this.filas) fila.limpar();
+      this.gerenciador.zerarContagem();
       for (const usuario of usuarios) {
-        this.filas[usuario.tipoFila].push(usuario);
+        this.filaFactory.filaDe(usuario).enfileirar(usuario);
         this.proximaSenha[usuario.tipoFila] = Math.max(
           this.proximaSenha[usuario.tipoFila],
           usuario.senha + 1,
         );
       }
-      for (const fila of Object.values(this.filas)) fila.sort();
+      for (const fila of this.filas) fila.ordenar();
       this.tocar();
     });
   }
 
   get totalAguardando(): number {
-    return this.filas[TipoFila.Preferencial].length + this.filas[TipoFila.Comum].length;
+    return this.filaPreferencial.tamanho + this.filaComum.tamanho;
   }
 
   entrar(nome: unknown, tipoFila: unknown): Promise<UsuarioComChave> {
@@ -175,7 +186,7 @@ export class FilaService extends EventEmitter {
   }
 
   /**
-   * Chama o próximo para a cabine: preferencial primeiro, depois comum.
+   * Chama o próximo para a cabine, na sequência do GerenciadorFilas.
    * Avisa todos (evento "proximo") quem pode votar agora.
    */
   proximoAVotar(): Promise<Usuario> {
@@ -214,7 +225,41 @@ export class FilaService extends EventEmitter {
         throw new FilaError("Não é a sua vez de votar");
       }
       if (!chaveConfere(eleitor.chave, chave)) throw new FilaError("Ticket inválido");
+      return this.registrarVoto(eleitor, candidatoId, inicio);
+    });
+  }
 
+  /**
+   * Voto pela API /api/v1 (sem a chave do ticket): vale para quem está na cabine ou,
+   * com a cabine livre, para quem é o próximo a votar (é chamado e vota na hora).
+   */
+  votarPelaApi(usuarioId: number, candidatoId: number): Promise<ResultadoVoto> {
+    const inicio = performance.now();
+    return this.exclusivo(async () => {
+      let eleitor = this.naCabine;
+      if (!eleitor && this.gerenciador.proximoAVotar()?.id === usuarioId) {
+        eleitor = await this.chamarSeLivre();
+      }
+      if (!eleitor || eleitor.id !== usuarioId) {
+        throw new ProibidoError("Ainda não é a vez deste usuário votar");
+      }
+      return this.registrarVoto(eleitor, candidatoId, inicio);
+    });
+  }
+
+  /** Quem o GerenciadorFilas chamaria agora (sem tirar da fila). */
+  proximoDaVez(): UsuarioJSON | null {
+    return this.gerenciador.proximoAVotar()?.toJSON() ?? null;
+  }
+
+  /** Um usuário que está aguardando ou na cabine, com a posição atual. */
+  buscar(id: number): UsuarioNaFila | null {
+    const estado = this.estado();
+    if (estado.naCabine?.id === id) return { ...estado.naCabine, aFrente: 0 };
+    return [...estado.preferencial, ...estado.comum].find((u) => u.id === id) ?? null;
+  }
+
+  private async registrarVoto(eleitor: Usuario, candidatoId: number, inicio: number): Promise<ResultadoVoto> {
       const candidatos = await this.candidatos.listar();
       const candidato = candidatos.find((c) => c.id === candidatoId);
       if (!candidato) throw new FilaError("Candidato inválido");
@@ -242,7 +287,6 @@ export class FilaService extends EventEmitter {
         resultado,
         tempoProcessamentoMs: Math.round((performance.now() - inicio) * 10) / 10,
       };
-    });
   }
 
   /**
@@ -254,10 +298,10 @@ export class FilaService extends EventEmitter {
       throw new FilaError("Id inválido");
     }
     return this.exclusivo(async () => {
-      for (const fila of Object.values(this.filas)) {
-        const indice = fila.findIndex(this.alvo(id));
+      for (const fila of this.filas) {
+        const indice = fila.posicaoDe(this.alvo(id));
         if (indice === -1) continue;
-        const usuario = fila.getElementAt(indice)!;
+        const usuario = fila.elementoEm(indice)!;
         if (chave !== undefined && !chaveConfere(usuario.chave, chave)) {
           throw new FilaError("Ticket inválido");
         }
@@ -278,7 +322,8 @@ export class FilaService extends EventEmitter {
       this.esvaziarCabine();
       await this.repo.limpar();
       await this.votos.limpar();
-      for (const fila of Object.values(this.filas)) fila.clear();
+      for (const fila of this.filas) fila.limpar();
+      this.gerenciador.zerarContagem();
       this.proximaSenha[TipoFila.Preferencial] = 1;
       this.proximaSenha[TipoFila.Comum] = 1;
       this.ultimosChamados = [];
@@ -301,9 +346,14 @@ export class FilaService extends EventEmitter {
   }
 
   estado(): FilaEstado {
+    // "À frente" segue a ordem real de chamada do GerenciadorFilas (com a alternância
+    // entre preferencial e comum), mais 1 se a cabine estiver ocupada.
     const ocupada = this.naCabine ? 1 : 0;
-    const pref = this.paraArray(this.filas[TipoFila.Preferencial], ocupada);
-    const comum = this.paraArray(this.filas[TipoFila.Comum], ocupada + pref.length);
+    const ordem = new Map(this.gerenciador.ordemDeChamada().map((u, i) => [u.id, i]));
+    const comAFrente = (fila: Fila<Usuario>): UsuarioNaFila[] =>
+      fila.paraArray().map((u) => ({ ...u.toJSON(), aFrente: ocupada + (ordem.get(u.id) ?? 0) }));
+    const pref = comAFrente(this.filaPreferencial);
+    const comum = comAFrente(this.filaComum);
     return {
       preferencial: pref,
       comum,
@@ -325,7 +375,7 @@ export class FilaService extends EventEmitter {
       aFrente: u.aFrente,
       podeVotar: false,
     });
-    const fila = [...estado.preferencial, ...estado.comum].map(linha);
+    const fila = [...estado.preferencial, ...estado.comum].sort((a, b) => a.aFrente - b.aFrente).map(linha);
     if (estado.naCabine) {
       fila.unshift({ ...linha({ ...estado.naCabine, aFrente: 0 }), posicaoNaFila: 0, podeVotar: true });
     }
@@ -336,11 +386,11 @@ export class FilaService extends EventEmitter {
   // Os métodos abaixo assumem que já estão dentro de exclusivo().
 
   private async inserirNaFila(nome: string, tipoFila: TipoFila, mock: boolean): Promise<Usuario> {
-    const fila = this.filas[tipoFila];
+    const fila = this.filaFactory.filaPorTipo(tipoFila);
     const usuario = new Usuario(
       nome,
       this.proximaSenha[tipoFila],
-      fila.length + 1,
+      fila.tamanho + 1,
       tipoFila,
       new Date(),
       randomBytes(16).toString("hex"),
@@ -348,18 +398,18 @@ export class FilaService extends EventEmitter {
     );
     await this.repo.inserir(usuario);
     this.proximaSenha[tipoFila]++;
-    fila.push(usuario);
+    fila.enfileirar(usuario);
     return usuario;
   }
 
   /** Remove o elemento `indice` da fila e decrementa a posição de quem estava atrás. */
-  private async tirarDaFila(fila: DoublyLinkedList<Usuario>, indice: number): Promise<Usuario> {
-    const usuario = fila.getElementAt(indice)!;
+  private async tirarDaFila(fila: Fila<Usuario>, indice: number): Promise<Usuario> {
+    const usuario = fila.elementoEm(indice)!;
     await this.repo.remover(usuario.id!);
     await this.repo.decrementarPosicoes(usuario.tipoFila, usuario.posicaoNaFila);
-    fila.removeAt(indice);
-    for (let i = indice; i < fila.length; i++) {
-      fila.getElementAt(i)!.posicaoNaFila--;
+    fila.removerEm(indice);
+    for (let i = indice; i < fila.tamanho; i++) {
+      fila.elementoEm(i)!.posicaoNaFila--;
     }
     return usuario;
   }
@@ -369,15 +419,14 @@ export class FilaService extends EventEmitter {
     return env.CHAMADA_AUTOMATICA ? this.chamarSeLivre() : Promise.resolve(null);
   }
 
-  /** Se a cabine está livre e tem alguém esperando, chama o próximo. */
+  /** Se a cabine está livre e tem alguém esperando, chama quem o GerenciadorFilas indicar. */
   private async chamarSeLivre(): Promise<Usuario | null> {
     if (this.naCabine) return null;
-    const fila = !this.filas[TipoFila.Preferencial].isEmpty()
-      ? this.filas[TipoFila.Preferencial]
-      : this.filas[TipoFila.Comum];
-    if (fila.isEmpty()) return null;
+    const escolhido = this.gerenciador.proximoAVotar();
+    if (!escolhido) return null;
 
-    const proximo = await this.tirarDaFila(fila, 0);
+    const proximo = await this.tirarDaFila(this.filaFactory.filaDe(escolhido), 0);
+    this.gerenciador.registrarChamada(proximo);
     proximo.chamadoEm = new Date();
     proximo.posicaoNaFila = 0; // 0 = na cabine
     this.naCabine = proximo;
@@ -411,12 +460,8 @@ export class FilaService extends EventEmitter {
     return new Usuario("", 0, 0, TipoFila.Comum, new Date(), "", false, id);
   }
 
-  private paraArray(fila: DoublyLinkedList<Usuario>, aFrenteBase: number): UsuarioNaFila[] {
-    const itens: UsuarioNaFila[] = [];
-    for (let i = 0; i < fila.length; i++) {
-      itens.push({ ...fila.getElementAt(i)!.toJSON(), aFrente: aFrenteBase + i });
-    }
-    return itens;
+  private get filas(): Fila<Usuario>[] {
+    return [this.filaPreferencial, this.filaComum];
   }
 
   private tocar(): void {

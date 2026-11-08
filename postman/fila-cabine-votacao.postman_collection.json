@@ -1,0 +1,371 @@
+{
+  "info": {
+    "_postman_id": "15267457-7865-4e3d-bdf3-c00ab9dc9c1f",
+    "name": "fila-cabine-votacao",
+    "description": "Rotas da API fila-cabine-votacao. Base: {{baseUrl}} (padrão http://localhost:3000/api/v1). Erros vêm como {error, message}; body/query inválido → 400 REQUISICAO_INVALIDA.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api/v1"
+    },
+    {
+      "key": "idUsuario",
+      "value": "1"
+    },
+    {
+      "key": "idCandidato",
+      "value": "2"
+    },
+    {
+      "key": "tipoFila",
+      "value": "comum"
+    }
+  ],
+  "item": [
+    {
+      "name": "Usuários",
+      "item": [
+        {
+          "name": "Criar usuário",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/usuarios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Maria\",\n  \"tipoFila\": \"COMUM\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// 201 → {idUsuario, posicaoFila}. Guarda o id para as outras requests.",
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set(\"idUsuario\", pm.response.json().idUsuario);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Posição na fila",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/posicao-na-fila?idUsuario={{idUsuario}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios",
+                "posicao-na-fila"
+              ],
+              "query": [
+                {
+                  "key": "idUsuario",
+                  "value": "{{idUsuario}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios",
+                "logout"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idUsuario\": {{idUsuario}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Fila",
+      "description": "Operações da fila. {{tipoFila}} = comum ou preferencial.",
+      "item": [
+        {
+          "name": "Exibir fila",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/fila/{{tipoFila}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fila",
+                "{{tipoFila}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Enfileirar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/fila/{{tipoFila}}/enfileirar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fila",
+                "{{tipoFila}}",
+                "enfileirar"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idUsuario\": {{idUsuario}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Desenfileirar",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/fila/{{tipoFila}}/desenfileirar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fila",
+                "{{tipoFila}}",
+                "desenfileirar"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Primeiro",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/fila/{{tipoFila}}/primeiro",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fila",
+                "{{tipoFila}}",
+                "primeiro"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Está vazia",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/fila/{{tipoFila}}/vazia",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fila",
+                "{{tipoFila}}",
+                "vazia"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Posição do usuário",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/fila/{{tipoFila}}/posicao?idUsuario={{idUsuario}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fila",
+                "{{tipoFila}}",
+                "posicao"
+              ],
+              "query": [
+                {
+                  "key": "idUsuario",
+                  "value": "{{idUsuario}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Inverter",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/fila/{{tipoFila}}/inverter",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fila",
+                "{{tipoFila}}",
+                "inverter"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Limpar",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/fila/{{tipoFila}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fila",
+                "{{tipoFila}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Voto",
+      "item": [
+        {
+          "name": "Votar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/voto",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "voto"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idUsuario\": {{idUsuario}},\n  \"idCandidato\": {{idCandidato}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Candidatos",
+      "item": [
+        {
+          "name": "Listar candidatos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/candidatos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "candidatos"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Resultado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/resultado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "resultado"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 import express, { type NextFunction, type Request, type Response } from "express";
 import { env } from "./config/env";
 import routes from "./routes";
-import { FilaError } from "./services/FilaService";
+import { AppError } from "./errors";
 
 const app = express();
 
@@ -37,12 +37,13 @@ app.use((_req: Request, res: Response) => {
 });
 
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-  if (err instanceof FilaError) {
-    res.status(400).json({ error: err.message });
-    return;
+  if (err instanceof AppError) {
+    if (err.statusCode >= 500) console.error(err);
+    res.status(err.statusCode).json(err.toJSON());
+  } else {
+    console.error(err);
+    res.status(500).json({ error: "ERRO_INTERNO", message: "Erro interno do servidor" });
   }
-  console.error(err);
-  res.status(500).json({ error: "Erro interno do servidor" });
 });
 
 export default app;
