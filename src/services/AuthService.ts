@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import type { NextFunction, Request, Response } from "express";
 import { env } from "../config/env";
 import { Administrador } from "../domain/administrador/Administrador";
+import { NaoAutorizadoError } from "../errors";
 import { AdministradorRepository } from "../repository/AdministradorRepository";
 
 const admins = new AdministradorRepository();
@@ -25,8 +26,7 @@ function iguais(a: string, b: string): boolean {
 
 /**
  * Login do administrador: confere login e senha na tabela `administrador`.
- * O token é assinado com HMAC, então continua válido mesmo depois de um restart
- * do servidor — o admin não é deslogado ao apertar F5.
+ * O token é assinado com HMAC, mantendo validade mesmo após restart do servidor.
  */
 export const authService = {
   /** Cria o admin padrão do sistema (admin / admin por padrão) se ele ainda não existe. */
@@ -36,14 +36,21 @@ export const authService = {
     return true;
   },
 
-  async login(nome: unknown, senha: unknown): Promise<{ token: string; nome: string; expiraEm: string } | null> {
+  async login(
+    nome: unknown,
+    senha: unknown,
+  ): Promise<{ token: string; nome: string; expiraEm: string } | null> {
     if (typeof nome !== "string" || typeof senha !== "string") return null;
     const admin = await admins.buscarPorLogin(nome.trim());
     if (!admin || !admin.confereSenha(senha)) return null;
 
     const payload: Payload = { nome: admin.login, exp: Date.now() + VALIDADE_MS };
     const dados = Buffer.from(JSON.stringify(payload)).toString("base64url");
-    return { token: `${dados}.${assinar(dados)}`, nome: admin.login, expiraEm: new Date(payload.exp).toISOString() };
+    return {
+      token: `${dados}.${assinar(dados)}`,
+      nome: admin.login,
+      expiraEm: new Date(payload.exp).toISOString(),
+    };
   },
 
   verificar(token: string | undefined): Payload | null {
@@ -68,8 +75,7 @@ export function tokenDaRequisicao(req: Request): string | undefined {
 export function exigirAdmin(req: Request, res: Response, next: NextFunction): void {
   const admin = authService.verificar(tokenDaRequisicao(req));
   if (!admin) {
-    res.status(401).json({ error: "Faça login como administrador" });
-    return;
+    throw new NaoAutorizadoError("Faça login como administrador");
   }
   res.locals.admin = admin;
   next();

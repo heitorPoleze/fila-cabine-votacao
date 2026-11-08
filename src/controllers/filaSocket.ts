@@ -1,22 +1,22 @@
-import type { Server } from "node:http";
+import type { IncomingMessage, Server } from "node:http";
 import { WebSocket, WebSocketServer, type RawData } from "ws";
+import { AppError } from "../errors";
+import { dispositivoService } from "../services/DispositivoService";
 import { FilaError, filaService } from "../services/FilaService";
 
 /**
- * Protocolo (JSON):
+ * Protocolo WebSocket (JSON):
  *
  * cliente -> servidor
- *   { type: "fila:entrar",   requestId, payload: { nome, tipoFila } }
- *   { type: "fila:remover",  requestId, payload: { id, chave } }   // o próprio eleitor sai
- *   { type: "fila:estado",   requestId }            // pede o estado atual
- *
- * As ações de administrador (chamar, liberar, remover qualquer um) ficam na API REST (/fila).
+ *   { type: "fila:entrar",   requestId, payload: { nome, tipoFila, dispositivoToken?, fingerprint?, nomeDispositivo?, mac? } }
+ *   { type: "fila:remover",  requestId, payload: { id, chave } }
+ *   { type: "fila:estado",   requestId }
  *
  * servidor -> cliente
- *   { type: "fila:estado",  payload: FilaEstado }   // broadcast a cada mudança (posição de todos)
- *   { type: "fila:proximo", payload: Usuario }      // broadcast: quem pode votar agora
- *   { type: "voto:novo",    payload: Voto }         // broadcast: alguém votou (resultado mudou)
- *   { type: "resposta", requestId, ok: true, data } // resposta a um pedido
+ *   { type: "fila:estado",  payload: FilaEstado }
+ *   { type: "fila:proximo", payload: Usuario }
+ *   { type: "voto:novo",    payload: Voto }
+ *   { type: "resposta", requestId, ok: true, data }
  *   { type: "resposta", requestId, ok: false, erro }
  */
 
@@ -30,8 +30,6 @@ const HEARTBEAT_MS = 30_000;
 
 export function attachFilaSocket(server: Server): WebSocketServer {
   const wss = new WebSocketServer({ server, path: "/ws" });
-  // Erros do servidor HTTP (ex.: porta ocupada) são tratados em server.ts; sem este
-  // ouvinte o ws os repassa como "Unhandled 'error' event".
   wss.on("error", () => undefined);
   const vivos = new WeakSet<WebSocket>();
 
@@ -46,8 +44,6 @@ export function attachFilaSocket(server: Server): WebSocketServer {
     }
   };
 
-  // Toda mudança na fila (venha do WebSocket, da API REST ou do voto de um mock)
-  // é avisada para todos: posição atual de cada um e quem pode votar.
   const aoMudar = (estado: unknown) => broadcast("fila:estado", estado);
   const aoChamar = (usuario: unknown) => broadcast("fila:proximo", usuario);
   const aoVotar = (voto: unknown) => broadcast("voto:novo", voto);
@@ -55,13 +51,20 @@ export function attachFilaSocket(server: Server): WebSocketServer {
   filaService.on("proximo", aoChamar);
   filaService.on("voto", aoVotar);
 
-  async function executar(msg: Mensagem): Promise<unknown> {
+  async function executar(msg: Mensagem, reqUpgrade: IncomingMessage): Promise<unknown> {
     const p = msg.payload ?? {};
     switch (msg.type) {
       case "fila:estado":
         return filaService.estado();
-      case "fila:entrar":
-        return filaService.entrar(p.nome, p.tipoFila);
+      case "fila:entrar": {
+        const disp = await dispositivoService.identificarUpgradeWs(reqUpgrade, {
+          tokenUuid: p.dispositivoToken ?? p.tokenDispositivo,
+          fingerprint: p.fingerprint,
+          nomeDispositivo: p.nomeDispositivo,
+          mac: p.mac,
+        });
+        return filaService.entrar(p.nome, p.tipoFila, disp);
+      }
       case "fila:remover":
         if (typeof p.chave !== "string") throw new FilaError("Ticket inválido");
         return filaService.remover(p.id, p.chave);
@@ -70,11 +73,10 @@ export function attachFilaSocket(server: Server): WebSocketServer {
     }
   }
 
-  wss.on("connection", (ws) => {
+  wss.on("connection", (ws: WebSocket, reqUpgrade: IncomingMessage) => {
     vivos.add(ws);
     ws.on("pong", () => vivos.add(ws));
 
-    // Assim que conecta, o cliente recebe o estado completo.
     enviar(ws, { type: "fila:estado", payload: filaService.estado() });
 
     ws.on("message", async (raw: RawData) => {
@@ -88,19 +90,16 @@ export function attachFilaSocket(server: Server): WebSocketServer {
       }
 
       try {
-        // O estado novo sai (pelo evento "mudou") antes da resposta: quando o
-        // cliente recebe a resposta, a fila que ele tem já inclui a mudança.
-        const data = await executar(msg);
+        const data = await executar(msg, reqUpgrade);
         enviar(ws, { type: "resposta", requestId: msg.requestId, ok: true, data });
       } catch (err) {
-        if (!(err instanceof FilaError)) console.error(err);
-        const erro = err instanceof FilaError ? err.message : "Erro interno do servidor";
+        if (!(err instanceof AppError)) console.error(err);
+        const erro = err instanceof AppError ? err.message : "Erro interno do servidor";
         enviar(ws, { type: "resposta", requestId: msg.requestId, ok: false, erro });
       }
     });
   });
 
-  // Derruba conexões mortas (aba fechada sem aviso, rede caiu etc.).
   const heartbeat = setInterval(() => {
     for (const ws of wss.clients) {
       if (!vivos.has(ws)) {
