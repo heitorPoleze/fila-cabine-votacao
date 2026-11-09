@@ -22,7 +22,7 @@ export class LogRequisicaoRepository {
   /**
    * Registra log de requisição utilizando prepared statements e sanitização de tamanho/caracteres.
    */
-  async registrar(log: LogRequisicao): Promise<LogRequisicao> {
+  public async registrar(log: LogRequisicao): Promise<LogRequisicao> {
     const [result] = await pool.execute<ResultSetHeader>(
       `INSERT INTO log_requisicao (
          metodo, rota, status_code, tempo_espera_ms,
@@ -46,7 +46,7 @@ export class LogRequisicaoRepository {
   /**
    * Consulta os logs de requisição com LIMIT parametrizado via '?' (sem concatenação de strings).
    */
-  async listar(limite = 100): Promise<LogRequisicao[]> {
+  public async listar(limite = 100): Promise<LogRequisicao[]> {
     const lim = sanitizarInteiro(limite, 1, 1000, 100)!;
     const [rows] = await pool.query<LogRequisicaoRow[]>(
       `SELECT * FROM log_requisicao ORDER BY data_hora DESC, id DESC LIMIT ?`,
@@ -55,7 +55,7 @@ export class LogRequisicaoRepository {
     return rows.map(LogRequisicao.fromRow);
   }
 
-  async resumo(): Promise<ResumoTempoRequisicoes> {
+  public async resumo(): Promise<ResumoTempoRequisicoes> {
     const [rows] = await pool.query<ResumoRequisicaoRow[]>(
       `SELECT COUNT(*) AS total,
               AVG(tempo_espera_ms) AS media_ms,
@@ -76,7 +76,7 @@ export class LogRequisicaoRepository {
     };
   }
 
-  async limpar(): Promise<void> {
+  public async limpar(): Promise<void> {
     await pool.execute(`DELETE FROM log_requisicao`);
   }
 }

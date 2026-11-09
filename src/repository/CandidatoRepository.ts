@@ -10,7 +10,7 @@ export class CandidatoRepository {
    * Lista todos os candidatos com total de votos correspondente ao escopo,
    * utilizando boolean estrito no placeholder parametrizado '?'.
    */
-  async listarCandidatos(mock = false): Promise<Candidato[]> {
+  public async listarCandidatos(mock = false): Promise<Candidato[]> {
     const [rows] = await pool.query<CandidatoRow[]>(
       `SELECT c.id, c.nome, c.url_foto,
               p.nome AS partido_nome, p.digito AS partido_digito,
@@ -28,7 +28,7 @@ export class CandidatoRepository {
   /**
    * Busca candidato individual por ID com validação de inteiro positivo e query parametrizada.
    */
-  async buscarPorId(id: number, mock = false): Promise<Candidato | null> {
+  public async buscarPorId(id: number, mock = false): Promise<Candidato | null> {
     const idValido = sanitizarInteiro(id, 1);
     if (!idValido) return null;
 
@@ -46,7 +46,7 @@ export class CandidatoRepository {
     return Candidato.fromRow({ ...rows[0], votos_totais: Number(rows[0].votos_totais) } as CandidatoRow);
   }
 
-  listar(mock = false): Promise<Candidato[]> {
+  public listar(mock = false): Promise<Candidato[]> {
     return this.listarCandidatos(mock);
   }
 }

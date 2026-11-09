@@ -174,15 +174,15 @@ class ContextoFila {
 
   constructor(public readonly ehMock: boolean) {}
 
-  get filas(): Fila<Usuario>[] {
+  public get filas(): Fila<Usuario>[] {
     return [this.filaPreferencial, this.filaComum];
   }
 
-  get totalAguardando(): number {
+  public get totalAguardando(): number {
     return this.filaPreferencial.tamanho + this.filaComum.tamanho;
   }
 
-  resetarMemoria(): void {
+  public resetarMemoria(): void {
     this.naCabine = null;
     this.ultimosChamados = [];
     this.filaPreferencial.limpar();
@@ -214,7 +214,7 @@ export class FilaService extends EventEmitter {
     super();
   }
 
-  get modoMock(): boolean {
+  public get modoMock(): boolean {
     return this._modoMock;
   }
 
@@ -229,7 +229,7 @@ export class FilaService extends EventEmitter {
   }
 
   /** Recarrega do banco quem estava aguardando quando o servidor reiniciou (separando real e mock). */
-  carregar(): Promise<void> {
+  public carregar(): Promise<void> {
     return this.exclusivo(async () => {
       const [usuariosReais, usuariosMock] = await Promise.all([
         this.repo.listarPorMock(false),
@@ -258,15 +258,15 @@ export class FilaService extends EventEmitter {
     });
   }
 
-  get totalAguardando(): number {
+  public get totalAguardando(): number {
     return this.contextoAtivo.totalAguardando;
   }
 
-  get totalAguardandoMock(): number {
+  public get totalAguardandoMock(): number {
     return this.mock.totalAguardando;
   }
 
-  get totalAguardandoReal(): number {
+  public get totalAguardandoReal(): number {
     return this.real.totalAguardando;
   }
 
@@ -278,7 +278,7 @@ export class FilaService extends EventEmitter {
    * Cadastra um eleitor real na fila oficial (`this.real`), validando os dados
    * do dispositivo para bloquear mais de 1 voto pelo mesmo aparelho/navegador.
    */
-  entrar(
+  public async entrar(
     nome: unknown,
     tipoFila: unknown,
     dispositivo?: DispositivoIdentificado,
@@ -357,17 +357,17 @@ export class FilaService extends EventEmitter {
   }
 
   /** Consulta posição do eleitor na fila real (`1` = primeiro a votar / na cabine). */
-  buscarReal(id: number): UsuarioNaFila | null {
+  public buscarReal(id: number): UsuarioNaFila | null {
     return this.buscarNoContexto(this.real, id);
   }
 
   /** Consulta posição no contexto atualmente ativo (painel). */
-  buscar(id: number): UsuarioNaFila | null {
+  public buscar(id: number): UsuarioNaFila | null {
     return this.buscarNoContexto(this.contextoAtivo, id) ?? this.buscarNoContexto(this.real, id);
   }
 
   /** Quem é o próximo na fila real segundo a proporção do GerenciadorFilas. */
-  proximoDaVez(): UsuarioJSON | null {
+  public proximoDaVez(): UsuarioJSON | null {
     return this.real.gerenciador.proximoAVotar()?.toJSON() ?? null;
   }
 
@@ -379,7 +379,7 @@ export class FilaService extends EventEmitter {
    *  - 403 se o usuário não for o 1º da fila geral (respeitando proporção 1:1 / 3:1 / 5:1);
    *  - 201 registra o voto, remove o eleitor da fila/cabine e trava o dispositivo.
    */
-  votarPelaApi(
+  public votarPelaApi(
     usuarioId: number,
     candidatoId: number,
     dispositivoRequisicao?: DispositivoIdentificado,
@@ -486,7 +486,7 @@ export class FilaService extends EventEmitter {
   }
 
   /** Voto com ticket/chave (usado pela cabine WebSocket/REST `/votos`). */
-  votar(
+  public votar(
     usuarioId: unknown,
     chave: unknown,
     candidatoId: unknown,
@@ -541,15 +541,11 @@ export class FilaService extends EventEmitter {
     });
   }
 
-  // =========================================================================
-  // MODO MOCK & DEMONSTRAÇÃO ADMIN DOS 8 MÉTODOS DO TAD FILA (Isolado!)
-  // =========================================================================
-
   /**
    * Ativa o modo Mock e opcionalmente popula as filas de demonstração.
    * Não altera absolutamente nada na fila real (`this.real`).
    */
-  popularMock(qtdOuOpcoes: number | OpcoesPopularMock = env.MOCK_QTD): Promise<UsuarioJSON[]> {
+  public popularMock(qtdOuOpcoes: number | OpcoesPopularMock = env.MOCK_QTD): Promise<UsuarioJSON[]> {
     const opcoes: OpcoesPopularMock =
       typeof qtdOuOpcoes === "number" ? { qtd: qtdOuOpcoes } : qtdOuOpcoes;
 
@@ -581,7 +577,7 @@ export class FilaService extends EventEmitter {
    * Desabilita o modo Mock, limpa todos os usuários/votos/timers de demonstração
    * e retorna imediatamente ao estado intacto da fila real (`this.real`).
    */
-  desativarMock(): Promise<{
+  public desativarMock(): Promise<{
     modoMock: boolean;
     mensagem: string;
     filaReal: FilaEstado;
@@ -606,7 +602,7 @@ export class FilaService extends EventEmitter {
     });
   }
 
-  statusMock() {
+  public statusMock() {
     return {
       modoMock: this._modoMock,
       mock: {
@@ -640,7 +636,7 @@ export class FilaService extends EventEmitter {
   }
 
   /** 1. Critério: Inserir elementos (comportamento FIFO — `fila.enfileirar`) */
-  demoEnfileirar(
+  public demoEnfileirar(
     tipoFila: TipoFila,
     opcoes?: { nome?: string; idUsuario?: number; escopo?: string },
   ): Promise<{
@@ -693,7 +689,7 @@ export class FilaService extends EventEmitter {
   }
 
   /** 2. Critério: Remover elementos (comportamento FIFO — `fila.desenfileirar`) */
-  demoDesenfileirar(
+  public demoDesenfileirar(
     tipoFila: TipoFila,
     escopo?: string,
   ): Promise<{
@@ -735,7 +731,7 @@ export class FilaService extends EventEmitter {
   }
 
   /** 3. Critério: Acessar o primeiro elemento da estrutura (`fila.primeiro`) */
-  demoPrimeiro(tipoFila: TipoFila, escopo?: string) {
+  public demoPrimeiro(tipoFila: TipoFila, escopo?: string) {
     const ctx = this.resolverContextoLeituraDemo(escopo);
     const fila = ctx.filaFactory.filaPorTipo(tipoFila);
     const primeiro = fila.primeiro();
@@ -749,7 +745,7 @@ export class FilaService extends EventEmitter {
   }
 
   /** 4. Critério: Verificar se a estrutura está vazia (`fila.estaVazia`) */
-  demoEstaVazia(tipoFila: TipoFila, escopo?: string) {
+  public demoEstaVazia(tipoFila: TipoFila, escopo?: string) {
     const ctx = this.resolverContextoLeituraDemo(escopo);
     const fila = ctx.filaFactory.filaPorTipo(tipoFila);
     return {
@@ -762,7 +758,7 @@ export class FilaService extends EventEmitter {
   }
 
   /** 5. Critério: Verificar a posição de um elemento na estrutura (`fila.posicaoDe`) */
-  demoPosicaoDe(tipoFila: TipoFila, idUsuario: number, escopo?: string) {
+  public demoPosicaoDe(tipoFila: TipoFila, idUsuario: number, escopo?: string) {
     const ctx = this.resolverContextoLeituraDemo(escopo);
     const fila = ctx.filaFactory.filaPorTipo(tipoFila);
     const indice = fila.posicaoDe(this.alvo(idUsuario));
@@ -779,7 +775,7 @@ export class FilaService extends EventEmitter {
   }
 
   /** 6. Critério: Limpar os elementos da estrutura (`fila.limpar`) */
-  demoLimpar(
+  public demoLimpar(
     tipoFila: TipoFila,
     escopo?: string,
   ): Promise<{
@@ -817,7 +813,7 @@ export class FilaService extends EventEmitter {
   }
 
   /** 7. Critério: Inverter a ordem dos elementos da estrutura (`fila.inverter`) */
-  demoInverter(
+  public demoInverter(
     tipoFila: TipoFila,
     escopo?: string,
   ): Promise<{
@@ -853,7 +849,7 @@ export class FilaService extends EventEmitter {
   }
 
   /** 8. Critério: Exibir os elementos presentes na estrutura (`fila.exibir`) */
-  demoExibir(tipoFila: TipoFila, escopo?: string) {
+  public demoExibir(tipoFila: TipoFila, escopo?: string) {
     const ctx = this.resolverContextoLeituraDemo(escopo);
     const fila = ctx.filaFactory.filaPorTipo(tipoFila);
     const elementos = listarElementosFifo(fila).map((u) => u.toJSON());
@@ -871,7 +867,7 @@ export class FilaService extends EventEmitter {
   }
 
   /** Resumo dinâmico da proporção atual (funciona para `real` e para `mock`). */
-  consultarProporcao(escopo?: string) {
+  public consultarProporcao(escopo?: string) {
     const ctx =
       escopo === "real"
         ? this.real
@@ -897,7 +893,7 @@ export class FilaService extends EventEmitter {
   // CONTROLES GERAIS DO PAINEL / WEBSOCKET (operam sobre o contexto ativo)
   // =========================================================================
 
-  proximoAVotar(): Promise<Usuario> {
+  public proximoAVotar(): Promise<Usuario> {
     return this.exclusivo(async () => {
       const ctx = this.contextoAtivo;
       if (ctx.naCabine) {
@@ -909,7 +905,7 @@ export class FilaService extends EventEmitter {
     });
   }
 
-  liberarCabine(): Promise<void> {
+  public liberarCabine(): Promise<void> {
     return this.exclusivo(async () => {
       const ctx = this.contextoAtivo;
       if (!ctx.naCabine) throw new FilaError("A cabine já está livre");
@@ -923,7 +919,7 @@ export class FilaService extends EventEmitter {
   /**
    * Remove alguém da fila (desistência pelo próprio eleitor com `chave`, ou remoção pelo admin).
    */
-  remover(id: unknown, chave?: unknown, tempoRequisicaoMs?: number): Promise<UsuarioJSON> {
+  public remover(id: unknown, chave?: unknown, tempoRequisicaoMs?: number): Promise<UsuarioJSON> {
     if (typeof id !== "number" || !Number.isInteger(id)) {
       throw new FilaError("Id inválido");
     }
@@ -965,7 +961,7 @@ export class FilaService extends EventEmitter {
    * - Se estiver em modo Mock, reinicia apenas o Mock (preservando a eleição real!);
    * - Se `escopo === "real"`, reinicia a eleição oficial (limpa fila real, votos reais e dispositivos).
    */
-  reiniciar(qtd = env.MOCK_QTD, escopo?: "mock" | "real"): Promise<FilaEstado> {
+  public reiniciar(qtd = env.MOCK_QTD, escopo?: "mock" | "real"): Promise<FilaEstado> {
     return this.exclusivo(async () => {
       const reiniciarReal = escopo === "real";
       if (reiniciarReal) {
@@ -997,15 +993,15 @@ export class FilaService extends EventEmitter {
     });
   }
 
-  resultado(): Promise<ContagemCandidato[]> {
+  public resultado(): Promise<ContagemCandidato[]> {
     return this.votos.contagem(this._modoMock);
   }
 
-  resultadoOficial(): Promise<ContagemCandidato[]> {
+  public resultadoOficial(): Promise<ContagemCandidato[]> {
     return this.votos.contagem(false);
   }
 
-  relatorio(escopo?: "real" | "mock"): Promise<VotoJSON[]> {
+  public async relatorio(escopo?: "real" | "mock"): Promise<VotoJSON[]> {
     const usarMock = escopo === "mock" ? true : escopo === "real" ? false : this._modoMock;
     return this.votos.listar(usarMock).then((v) => v.map((x) => x.toJSON()));
   }
@@ -1075,15 +1071,15 @@ export class FilaService extends EventEmitter {
     };
   }
 
-  estado(): FilaEstado {
+  public estado(): FilaEstado {
     return this.estadoDoContexto(this.contextoAtivo);
   }
 
-  estadoReal(): FilaEstado {
+  public estadoReal(): FilaEstado {
     return this.estadoDoContexto(this.real);
   }
 
-  posicoes(): { podeVotar: UsuarioJSON | null; fila: PosicaoAtual[] } {
+  public posicoes(): { podeVotar: UsuarioJSON | null; fila: PosicaoAtual[] } {
     const estado = this.estado();
     const linha = (u: UsuarioNaFila): PosicaoAtual => ({
       id: u.id!,
@@ -1108,10 +1104,6 @@ export class FilaService extends EventEmitter {
     }
     return { podeVotar: estado.naCabine, fila };
   }
-
-  // =========================================================================
-  // MÉTODOS AUXILIARES INTERNOS (sempre executados dentro de `exclusivo()`)
-  // =========================================================================
 
   private estadoDoContexto(ctx: ContextoFila): FilaEstado {
     const ocupada = ctx.naCabine ? 1 : 0;

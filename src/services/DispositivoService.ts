@@ -191,7 +191,7 @@ export class DispositivoService {
     };
   }
 
-  async identificarUpgradeWs(
+  public async identificarUpgradeWs(
     req: IncomingMessage,
     extra?: { tokenUuid?: unknown; fingerprint?: unknown; nomeDispositivo?: unknown; mac?: unknown },
   ): Promise<DispositivoIdentificado> {
@@ -246,7 +246,7 @@ export class DispositivoService {
       fingerprint,
     };
   }
-  async consultarStatus(info: DispositivoIdentificado) {
+  public async consultarStatus(info: DispositivoIdentificado) {
     const registro = await this.repo.buscarPorIdentificacao(info);
     return {
       dispositivoId: info.dispositivoId,
@@ -260,7 +260,7 @@ export class DispositivoService {
     };
   }
 
-  listarDispositivos() {
+  public async listarDispositivos() {
     return this.repo.listarTodos();
   }
 }

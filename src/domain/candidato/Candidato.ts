@@ -35,11 +35,11 @@ export class Candidato {
     this._votosTotais = votosTotais;
   }
 
-  get votosTotais(): number {
+  public get votosTotais(): number {
     return this._votosTotais;
   }
 
-  static fromRow(row: CandidatoRow): Candidato {
+  public static fromRow(row: CandidatoRow): Candidato {
     return new Candidato(
       row.id,
       row.nome,
@@ -51,7 +51,7 @@ export class Candidato {
     );
   }
 
-  toJSON(): CandidatoJSON {
+  public toJSON(): CandidatoJSON {
     return {
       id: this.id,
       nome: this.nome,

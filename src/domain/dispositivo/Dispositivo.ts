@@ -62,7 +62,7 @@ export class DispositivoVotante {
     public id?: number,
   ) {}
 
-  static fromRow(row: DispositivoVotanteRow): DispositivoVotante {
+  public static fromRow(row: DispositivoVotanteRow): DispositivoVotante {
     return new DispositivoVotante(
       row.dispositivo_id,
       row.token_uuid,
@@ -80,7 +80,7 @@ export class DispositivoVotante {
     );
   }
 
-  toJSON(): DispositivoVotanteJSON {
+  public toJSON(): DispositivoVotanteJSON {
     return {
       id: this.id,
       dispositivoId: this.dispositivoId,

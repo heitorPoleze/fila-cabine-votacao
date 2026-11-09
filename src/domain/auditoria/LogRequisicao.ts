@@ -38,7 +38,7 @@ export function formatarDuracaoMs(ms: number | null | undefined): string | null 
 }
 
 export class LogRequisicao {
-  constructor(
+  public constructor(
     public readonly metodo: string,
     public readonly rota: string,
     public readonly statusCode: number,
@@ -50,7 +50,7 @@ export class LogRequisicao {
     public id?: number,
   ) {}
 
-  static fromRow(row: LogRequisicaoRow): LogRequisicao {
+  public static fromRow(row: LogRequisicaoRow): LogRequisicao {
     return new LogRequisicao(
       row.metodo,
       row.rota,
@@ -64,7 +64,7 @@ export class LogRequisicao {
     );
   }
 
-  toJSON(): LogRequisicaoJSON {
+  public toJSON(): LogRequisicaoJSON {
     return {
       id: this.id,
       metodo: this.metodo,

@@ -20,20 +20,20 @@ export class Administrador {
     public id?: number,
   ) {}
 
-  static criar(login: string, senha: string): Administrador {
+  public static criar(login: string, senha: string): Administrador {
     return new Administrador(login, Administrador.gerarHash(senha));
   }
 
-  static fromRow(row: AdministradorRow): Administrador {
+  public static fromRow(row: AdministradorRow): Administrador {
     return new Administrador(row.login, row.senha_hash, row.id);
   }
 
-  static gerarHash(senha: string): string {
+  public static gerarHash(senha: string): string {
     const salt = randomBytes(16).toString("hex");
     return `${salt}:${scryptSync(senha, salt, 64).toString("hex")}`;
   }
 
-  confereSenha(senha: string): boolean {
+  public confereSenha(senha: string): boolean {
     const [salt, hash] = this.senhaHash.split(":");
     if (!salt || !hash) return false;
     const esperado = Buffer.from(hash, "hex");
@@ -41,7 +41,7 @@ export class Administrador {
     return timingSafeEqual(esperado, recebido);
   }
 
-  toJSON(): AdministradorJSON {
+  public toJSON(): AdministradorJSON {
     return { id: this.id, login: this.login };
   }
 }

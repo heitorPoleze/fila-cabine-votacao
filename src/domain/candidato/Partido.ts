@@ -15,7 +15,7 @@ export class Partido {
     this.digito = digito;
   }
 
-  toJSON(): PartidoJSON {
+  public toJSON(): PartidoJSON {
     return { nome: this.nome, digito: this.digito };
   }
 }

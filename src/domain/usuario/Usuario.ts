@@ -64,7 +64,7 @@ export class Usuario implements IComparable {
     this.dispositivoId = dispositivo?.dispositivoId ?? null;
   }
 
-  static fromRow(row: UsuarioRow): Usuario {
+  public static fromRow(row: UsuarioRow): Usuario {
     return new Usuario(
       row.nome,
       row.senha,
@@ -85,18 +85,18 @@ export class Usuario implements IComparable {
     );
   }
 
-  equals(other: IComparable): boolean {
+  public equals(other: IComparable): boolean {
     return other instanceof Usuario && other.id !== undefined && other.id === this.id;
   }
 
-  compareTo(other: IComparable): number {
+  public compareTo(other: IComparable): number {
     if (!(other instanceof Usuario)) {
       throw new Error("Usuario só pode ser comparado com outro Usuario");
     }
     return this.posicaoNaFila - other.posicaoNaFila;
   }
 
-  toJSON(): UsuarioJSON {
+  public toJSON(): UsuarioJSON {
     return {
       id: this.id,
       nome: this.nome,
@@ -114,7 +114,7 @@ export class Usuario implements IComparable {
     };
   }
 
-  toString(): string {
+  public toString(): string {
     return `#${this.id ?? "?"} [${this.tipoFila === "PREFERENCIAL" ? "P" : "C"}${String(this.senha).padStart(3, "0")}] ${this.nome} (${this.tipoFila})`;
   }
 }

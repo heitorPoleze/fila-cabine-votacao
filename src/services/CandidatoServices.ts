@@ -4,11 +4,11 @@ import type { CandidatoRepository } from "../repository/CandidatoRepository";
 export class CandidatoServices {
   constructor(private readonly candidatoRepository: CandidatoRepository) {}
 
-  async listarCandidatos(mock?: boolean): Promise<Candidato[]> {
+  public async listarCandidatos(mock?: boolean): Promise<Candidato[]> {
     return await this.candidatoRepository.listarCandidatos(mock);
   }
 
-  async buscarPorId(id: number, mock?: boolean): Promise<Candidato | null> {
+  public async buscarPorId(id: number, mock?: boolean): Promise<Candidato | null> {
     return await this.candidatoRepository.buscarPorId(id, mock);
   }
 }

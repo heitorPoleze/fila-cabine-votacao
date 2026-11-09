@@ -10,7 +10,7 @@ import { Usuario, type UsuarioRow } from "../domain/usuario/Usuario";
 
 export class UsuarioRepository {
   /** Todos os usuários que ainda estão aguardando no escopo informado (real ou mock). */
-  async listarPorMock(mock: boolean): Promise<Usuario[]> {
+  public async listarPorMock(mock: boolean): Promise<Usuario[]> {
     const [rows] = await pool.query<UsuarioRow[]>(
       `SELECT id, nome, senha, posicao_na_fila, tipo_fila, entrou_em, chamado_em, chave, mock,
               ip, mac, nome_dispositivo, fingerprint, dispositivo_id
@@ -22,7 +22,7 @@ export class UsuarioRepository {
     return rows.map(Usuario.fromRow);
   }
 
-  async listarTodos(): Promise<Usuario[]> {
+  public async listarTodos(): Promise<Usuario[]> {
     const [rows] = await pool.query<UsuarioRow[]>(
       `SELECT id, nome, senha, posicao_na_fila, tipo_fila, entrou_em, chamado_em, chave, mock,
               ip, mac, nome_dispositivo, fingerprint, dispositivo_id
@@ -35,7 +35,7 @@ export class UsuarioRepository {
   /**
    * Insere um eleitor na fila persistida usando prepared statement com sanitização estrita de strings.
    */
-  async inserir(usuario: Usuario): Promise<Usuario> {
+  public async inserir(usuario: Usuario): Promise<Usuario> {
     const [result] = await pool.execute<ResultSetHeader>(
       `INSERT INTO usuario (
          nome, senha, posicao_na_fila, tipo_fila, entrou_em, chamado_em, chave, mock,
@@ -61,24 +61,24 @@ export class UsuarioRepository {
     return usuario;
   }
 
-  async remover(id: number): Promise<void> {
+  public async remover(id: number): Promise<void> {
     const idValido = sanitizarInteiro(id, 1);
     if (!idValido) return;
     await pool.execute(`DELETE FROM usuario WHERE id = ?`, [idValido]);
   }
 
   /** Esvazia apenas as filas do escopo indicado (mock = true ou mock = false). */
-  async limparPorMock(mock: boolean): Promise<void> {
+  public async limparPorMock(mock: boolean): Promise<void> {
     await pool.execute(`DELETE FROM usuario WHERE mock = ?`, [sanitizarBoolean(mock)]);
   }
 
   /** Esvazia todas as filas (real e mock). */
-  async limpar(): Promise<void> {
+  public async limpar(): Promise<void> {
     await pool.execute(`DELETE FROM usuario`);
   }
 
   /** Quem estava atrás de `posicao` no mesmo escopo/tipo anda uma posição para a frente. */
-  async decrementarPosicoes(tipoFila: TipoFila, posicao: number, mock: boolean): Promise<void> {
+  public async decrementarPosicoes(tipoFila: TipoFila, posicao: number, mock: boolean): Promise<void> {
     const pos = sanitizarInteiro(posicao, 0);
     if (pos === null) return;
     await pool.execute(
@@ -93,7 +93,7 @@ export class UsuarioRepository {
    * Atualiza as posições persistidas em transação atômica,
    * evitando corrupção de estado se houver falha intermediária.
    */
-  async sincronizarPosicoes(usuariosOrdenados: Usuario[]): Promise<void> {
+  public async sincronizarPosicoes(usuariosOrdenados: Usuario[]): Promise<void> {
     if (!Array.isArray(usuariosOrdenados) || usuariosOrdenados.length === 0) return;
 
     const connection = await pool.getConnection();
@@ -119,7 +119,7 @@ export class UsuarioRepository {
   }
 
   /** Persiste o horário em que o primeiro da fila chegou à vez de votar. */
-  async atualizarChamadoEm(id: number, chamadoEm: Date | null): Promise<void> {
+  public async atualizarChamadoEm(id: number, chamadoEm: Date | null): Promise<void> {
     const idValido = sanitizarInteiro(id, 1);
     if (!idValido) return;
     await pool.execute(`UPDATE usuario SET chamado_em = ? WHERE id = ?`, [chamadoEm, idValido]);

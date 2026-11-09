@@ -73,7 +73,7 @@ export class Voto {
     public readonly tempoRequisicaoMs: number | null = null,
   ) {}
 
-  static fromRow(row: VotoRow): Voto {
+  public static fromRow(row: VotoRow): Voto {
     return new Voto(
       row.usuario_nome,
       row.senha,
@@ -98,16 +98,16 @@ export class Voto {
   }
 
   /** Quanto tempo levou desde que entrou na fila até chegar na cabine. */
-  get tempoNaFilaMs(): number {
+  public get tempoNaFilaMs(): number {
     return Math.max(0, this.chamadoEm.getTime() - this.entrouNaFilaEm.getTime());
   }
 
   /** Quanto tempo levou na cabine até confirmar o voto. */
-  get tempoParaVotarMs(): number {
+  public get tempoParaVotarMs(): number {
     return Math.max(0, this.votouEm.getTime() - this.chamadoEm.getTime());
   }
 
-  toJSON(): VotoJSON {
+  public toJSON(): VotoJSON {
     return {
       id: this.id,
       usuarioId: this.usuarioId,

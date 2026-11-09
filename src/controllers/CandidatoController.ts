@@ -17,7 +17,7 @@ export class CandidatoController {
    * GET /api/v1/candidatos
    * Retorna lista de candidatos SEM totalização de votos.
    */
-  async listar(req: Request, res: Response): Promise<void> {
+  public async listar(req: Request, res: Response): Promise<void> {
     const candidatos = await this.candidatoServices.listarCandidatos(extrairMock(req));
 
     res.status(200).json(
@@ -32,7 +32,7 @@ export class CandidatoController {
    * GET /api/v1/candidatos/:id
    * Retorna os detalhes de um candidato específico por ID.
    */
-  async buscarPorId(req: Request, res: Response): Promise<void> {
+  public async buscarPorId(req: Request, res: Response): Promise<void> {
     const id = Number(req.params.id);
     const candidato = await this.candidatoServices.buscarPorId(id, extrairMock(req));
     if (!candidato) {
@@ -47,7 +47,7 @@ export class CandidatoController {
    * GET /api/v1/resultado e GET /api/v1/resultados
    * Retorna lista de candidatos COM totalização de votos (qtdVotosTotal).
    */
-  async resultado(req: Request, res: Response): Promise<void> {
+  public async resultado(req: Request, res: Response): Promise<void> {
     const candidatos = await this.candidatoServices.listarCandidatos(extrairMock(req));
 
     res.status(200).json(

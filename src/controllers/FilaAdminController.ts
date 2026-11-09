@@ -33,7 +33,7 @@ export class FilaAdminController {
     res.status(200).json(this.filaService.demoExibir(tipoFila, extrairEscopo(req)));
   }
 
-  async enfileirar(req: Request, res: Response): Promise<void> {
+  public async enfileirar(req: Request, res: Response): Promise<void> {
     const tipoFila = parsearTipoFilaParam(req.params.tipoFila);
     const { nome, idUsuario } = req.body ?? {};
     const opcoes: { nome?: string; idUsuario?: number; escopo?: string } = {};
@@ -46,7 +46,7 @@ export class FilaAdminController {
     res.status(201).json(resultado);
   }
 
-  async desenfileirar(req: Request, res: Response): Promise<void> {
+  public async desenfileirar(req: Request, res: Response): Promise<void> {
     const tipoFila = parsearTipoFilaParam(req.params.tipoFila);
     const resultado = await this.filaService.demoDesenfileirar(tipoFila, extrairEscopo(req));
     res.status(200).json(resultado);
@@ -68,13 +68,13 @@ export class FilaAdminController {
     res.status(200).json(this.filaService.demoPosicaoDe(tipoFila, idUsuario, extrairEscopo(req)));
   }
 
-  async inverter(req: Request, res: Response): Promise<void> {
+  public async inverter(req: Request, res: Response): Promise<void> {
     const tipoFila = parsearTipoFilaParam(req.params.tipoFila);
     const resultado = await this.filaService.demoInverter(tipoFila, extrairEscopo(req));
     res.status(200).json(resultado);
   }
 
-  async limpar(req: Request, res: Response): Promise<void> {
+  public async limpar(req: Request, res: Response): Promise<void> {
     const tipoFila = parsearTipoFilaParam(req.params.tipoFila);
     const resultado = await this.filaService.demoLimpar(tipoFila, extrairEscopo(req));
     res.status(200).json(resultado);
@@ -90,7 +90,7 @@ export class FilaAdminController {
     res.status(200).json(this.filaService.statusMock());
   }
 
-  async ativarMock(req: Request, res: Response): Promise<void> {
+  public async ativarMock(req: Request, res: Response): Promise<void> {
     const { qtd, qtdPreferencial, qtdComum, limparAntes } = req.body ?? {};
     const opcoes: {
       qtd?: number;
@@ -113,12 +113,12 @@ export class FilaAdminController {
     });
   }
 
-  async desativarMock(_req: Request, res: Response): Promise<void> {
+  public async desativarMock(_req: Request, res: Response): Promise<void> {
     const resultado = await this.filaService.desativarMock();
     res.status(200).json(resultado);
   }
 
-  async chamarProximo(_req: Request, res: Response): Promise<void> {
+  public async chamarProximo(_req: Request, res: Response): Promise<void> {
     const chamado = await this.filaService.proximoAVotar();
     res.status(200).json({
       modoMock: this.filaService.modoMock,
@@ -127,19 +127,19 @@ export class FilaAdminController {
     });
   }
 
-  async statusDispositivo(req: Request, res: Response): Promise<void> {
+  public async statusDispositivo(req: Request, res: Response): Promise<void> {
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
     res.setHeader("Pragma", "no-cache");
     const info = obterDispositivo(req) ?? (await this.dispositivoService.identificarRequisicao(req));
     res.status(200).json(await this.dispositivoService.consultarStatus(info));
   }
 
-  async listarDispositivos(_req: Request, res: Response): Promise<void> {
+  public async listarDispositivos(_req: Request, res: Response): Promise<void> {
     const lista = await this.dispositivoService.listarDispositivos();
     res.status(200).json(lista.map((d) => d.toJSON()));
   }
 
-  async listarLogs(req: Request, res: Response): Promise<void> {
+  public async listarLogs(req: Request, res: Response): Promise<void> {
     const limite = req.query.limite !== undefined ? Number(req.query.limite) : 200;
     const escopoBruto = extrairEscopo(req);
     const escopo: "real" | "mock" = escopoBruto === "mock" ? "mock" : "real";

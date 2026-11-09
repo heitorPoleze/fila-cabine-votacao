@@ -92,7 +92,7 @@ export class LogAuditoria {
     public id?: number,
   ) {}
 
-  static fromRow(row: LogAuditoriaRow): LogAuditoria {
+  public static fromRow(row: LogAuditoriaRow): LogAuditoria {
     return new LogAuditoria(
       row.operacao,
       new Date(row.data_hora),
@@ -124,7 +124,7 @@ export class LogAuditoria {
     );
   }
 
-  toJSON(): LogAuditoriaJSON {
+  public toJSON(): LogAuditoriaJSON {
     return {
       id: this.id,
       operacao: this.operacao,

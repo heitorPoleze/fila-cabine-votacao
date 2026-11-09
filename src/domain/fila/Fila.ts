@@ -1,83 +1,56 @@
 import { DoublyLinkedList } from "./DoublyLinkedList";
 import type { IComparable } from "./IComparable";
-import {
-    MEMBROS_PERMITIDOS_FILA,
-    type IFila,
-} from "./IFila";
-
-/**
- * Valida em tempo de execução que nenhuma classe na hierarquia de Fila
- * declarou métodos que não existem no TAD Fila (como acesso/remoção por índice,
- * ordenação ou operações LIFO da DoublyLinkedList).
- */
-function validarBarreiraDeMetodosFila(construtorAlvo: Function): void {
-    let protoAtual: object | null = construtorAlvo.prototype;
-
-    while (protoAtual && protoAtual !== Object.prototype) {
-        for (const nomePropriedade of Object.getOwnPropertyNames(protoAtual)) {
-            if (!MEMBROS_PERMITIDOS_FILA.has(nomePropriedade)) {
-                throw new TypeError(
-                    `Violação do TAD Fila: o método/propriedade "${nomePropriedade}" na classe "${construtorAlvo.name}" não é permitido para uma estrutura de dados Fila.`
-                );
-            }
-        }
-        if (protoAtual === Fila.prototype) break;
-        protoAtual = Object.getPrototypeOf(protoAtual);
-    }
-}
+import { type IFila } from "./IFila";
 
 export class Fila<T extends IComparable> implements IFila<T> {
     private readonly lista = new DoublyLinkedList<T>();
     private _qtdVotosAnteriores: number;
 
     constructor(qtdVotosAnteriores: number = 0) {
-        validarBarreiraDeMetodosFila(new.target);
         this._qtdVotosAnteriores = qtdVotosAnteriores;
     }
 
-    enfileirar(elemento: T): void {
+    public enfileirar(elemento: T): void {
         this.lista.push(elemento);
     }
 
-    desenfileirar(): T | undefined {
+    public desenfileirar(): T | undefined {
         return this.lista.shift();
     }
 
-    primeiro(): T | undefined {
+    public primeiro(): T | undefined {
         return this.lista.getElementAt(0);
     }
 
-    get tamanho(): number {
+    public get tamanho(): number {
         return this.lista.length;
     }
 
-    estaVazia(): boolean {
+    public estaVazia(): boolean {
         return this.lista.isEmpty();
     }
 
-    posicaoDe(elemento: T): number {
+    public posicaoDe(elemento: T): number {
         return this.lista.findIndex(elemento);
     }
 
-    limpar(): void {
+    public limpar(): void {
         this.lista.clear();
     }
 
-    inverter(): void {
+    public inverter(): void {
         this.lista.reverse();
     }
 
-    exibir(): string {
+    public exibir(): string {
         return this.lista.toString();
     }
 
-    get qtdVotosAnteriores(): number {
+    public get qtdVotosAnteriores(): number {
         return this._qtdVotosAnteriores;
     }
 
-    set qtdVotosAnteriores(qtdVotosAnteriores: number) {
+    public set qtdVotosAnteriores(qtdVotosAnteriores: number) {
         this._qtdVotosAnteriores = qtdVotosAnteriores;
     }
 }
-
-Object.freeze(Fila.prototype);

@@ -12,7 +12,7 @@ export class LogAuditoriaRepository {
    * Registra evento de auditoria usando prepared statement (pool.execute)
    * e sanitização estrita de entradas contra injeção e truncamento malicioso.
    */
-  async registrar(log: LogAuditoria): Promise<LogAuditoria> {
+  public async registrar(log: LogAuditoria): Promise<LogAuditoria> {
     const [result] = await pool.execute<ResultSetHeader>(
       `INSERT INTO log_auditoria (
          operacao, data_hora, usuario_id, eleitor_nome, tipo_fila,
@@ -52,7 +52,7 @@ export class LogAuditoriaRepository {
    * Consulta logs de auditoria usando LIMIT parametrizado com '?',
    * eliminando qualquer concatenação direta na query SQL.
    */
-  async listar(limite = 200, mock = false): Promise<LogAuditoria[]> {
+  public async listar(limite = 200, mock = false): Promise<LogAuditoria[]> {
     const lim = sanitizarInteiro(limite, 1, 1000, 200)!;
     const [rows] = await pool.query<LogAuditoriaRow[]>(
       `SELECT * FROM log_auditoria WHERE mock = ? ORDER BY data_hora DESC, id DESC LIMIT ?`,
@@ -61,11 +61,11 @@ export class LogAuditoriaRepository {
     return rows.map(LogAuditoria.fromRow);
   }
 
-  async limparPorMock(mock: boolean): Promise<void> {
+  public async limparPorMock(mock: boolean): Promise<void> {
     await pool.execute(`DELETE FROM log_auditoria WHERE mock = ?`, [sanitizarBoolean(mock)]);
   }
 
-  async limpar(): Promise<void> {
+  public async limpar(): Promise<void> {
     await pool.execute(`DELETE FROM log_auditoria`);
   }
 }

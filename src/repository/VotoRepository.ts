@@ -29,7 +29,7 @@ export class VotoRepository {
   /**
    * Insere o voto oficial utilizando prepared statement parametrizado (pool.execute).
    */
-  async inserir(voto: Voto): Promise<Voto> {
+  public async inserir(voto: Voto): Promise<Voto> {
     const [result] = await pool.execute<ResultSetHeader>(
       `INSERT INTO voto (
          usuario_id, usuario_nome, senha, tipo_fila, candidato_id,
@@ -64,7 +64,7 @@ export class VotoRepository {
   /**
    * Verifica se o usuário (idUsuario) já registrou um voto anteriormente com validação de tipo.
    */
-  async usuarioJaVotou(usuarioId: number): Promise<boolean> {
+  public async usuarioJaVotou(usuarioId: number): Promise<boolean> {
     const id = sanitizarInteiro(usuarioId, 1);
     if (!id) return false;
     const [rows] = await pool.query<RowDataPacket[]>(
@@ -75,19 +75,19 @@ export class VotoRepository {
   }
 
   /** Apaga apenas os votos do escopo indicado (mock = true ou mock = false). */
-  async limparPorMock(mock: boolean): Promise<void> {
+  public async limparPorMock(mock: boolean): Promise<void> {
     await pool.execute(`DELETE FROM voto WHERE mock = ?`, [sanitizarBoolean(mock)]);
   }
 
   /** Apaga todos os votos (recomeçar a eleição). */
-  async limpar(): Promise<void> {
+  public async limpar(): Promise<void> {
     await pool.execute(`DELETE FROM voto`);
   }
 
   /**
    * Relatório de votos com LIMIT 100% parametrizado via '?' para proteção contra SQL Injection.
    */
-  async listar(mock = false, limite?: number): Promise<Voto[]> {
+  public async listar(mock = false, limite?: number): Promise<Voto[]> {
     const params: unknown[] = [sanitizarBoolean(mock)];
     let sql = `SELECT v.id, v.usuario_id, v.usuario_nome, v.senha, v.tipo_fila, v.candidato_id,
               c.nome AS candidato_nome, v.entrou_na_fila_em, v.chamado_em, v.votou_em,
@@ -111,7 +111,7 @@ export class VotoRepository {
   }
 
   /** Quantidade absoluta de votos de cada candidato (incluindo "Anular" com partido/foto null). */
-  async contagem(mock = false): Promise<ContagemCandidato[]> {
+  public async contagem(mock = false): Promise<ContagemCandidato[]> {
     const [rows] = await pool.query<ContagemRow[]>(
       `SELECT c.id AS candidato_id, c.nome, c.url_foto,
               p.nome AS partido_nome, p.digito AS partido_digito,

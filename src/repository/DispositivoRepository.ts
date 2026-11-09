@@ -17,7 +17,7 @@ export class DispositivoRepository {
    * - Identifica por `dispositivo_id`, `token_uuid` ou `mac` físico;
    * - Caso sem `tokenUuid`, identifica por `dispositivo_id`, `mac` ou `(ip + fingerprint)`.
    */
-  async buscarPorIdentificacao(info: DispositivoIdentificado): Promise<DispositivoVotante | null> {
+  public async buscarPorIdentificacao(info: DispositivoIdentificado): Promise<DispositivoVotante | null> {
     const dispId = sanitizarTexto(info.dispositivoId, 64);
     if (!dispId) return null;
 
@@ -62,7 +62,7 @@ export class DispositivoRepository {
     return rows[0] ? DispositivoVotante.fromRow(rows[0]) : null;
   }
 
-  async buscarPorDispositivoId(dispositivoId: string): Promise<DispositivoVotante | null> {
+  public async buscarPorDispositivoId(dispositivoId: string): Promise<DispositivoVotante | null> {
     const dispId = sanitizarTexto(dispositivoId, 64);
     if (!dispId) return null;
     const [rows] = await pool.query<DispositivoVotanteRow[]>(
@@ -72,7 +72,7 @@ export class DispositivoRepository {
     return rows[0] ? DispositivoVotante.fromRow(rows[0]) : null;
   }
 
-  async registrarOuAtualizarAcesso(
+  public async registrarOuAtualizarAcesso(
     info: DispositivoIdentificado,
     nomeEleitor: string,
     tipoFila: TipoFila,
@@ -150,7 +150,7 @@ export class DispositivoRepository {
     );
   }
 
-  async marcarVotoConcluido(
+  public async marcarVotoConcluido(
     dispositivoId: string,
     usuarioId: number,
     votouEm: Date,
@@ -183,14 +183,14 @@ export class DispositivoRepository {
     );
   }
 
-  async listarTodos(): Promise<DispositivoVotante[]> {
+  public async listarTodos(): Promise<DispositivoVotante[]> {
     const [rows] = await pool.query<DispositivoVotanteRow[]>(
       `SELECT * FROM dispositivos_votantes ORDER BY atualizado_em DESC, id DESC`,
     );
     return rows.map(DispositivoVotante.fromRow);
   }
 
-  async limpar(): Promise<void> {
+  public async limpar(): Promise<void> {
     await pool.execute(`DELETE FROM dispositivos_votantes`);
   }
 }

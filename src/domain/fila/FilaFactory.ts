@@ -10,7 +10,7 @@ export class FilaFactory {
         private readonly filaComum: FilaComum,
     ) {}
 
-    filaPorTipo(tipo: TipoFila): Fila<Usuario> {
+    public filaPorTipo(tipo: TipoFila): Fila<Usuario> {
         switch (tipo) {
             case TipoFila.Preferencial:
                 return this.filaPreferencial;
@@ -21,11 +21,11 @@ export class FilaFactory {
         }
     }
 
-    filaDe(usuario: Usuario): Fila<Usuario> {
+    public filaDe(usuario: Usuario): Fila<Usuario> {
         return this.filaPorTipo(usuario.tipoFila);
     }
 
-    filaParalelaDe(usuario: Usuario): Fila<Usuario> {
+    public filaParalelaDe(usuario: Usuario): Fila<Usuario> {
         if(this.filaDe(usuario) === this.filaPreferencial) {
             return this.filaComum;
         }

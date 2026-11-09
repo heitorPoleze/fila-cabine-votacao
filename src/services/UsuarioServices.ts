@@ -18,7 +18,7 @@ export class UsuarioServices {
   constructor(private readonly filaService: FilaService) {}
 
   /** Cadastra eleitor na fila real, vinculando dispositivo e retornando posição global (1-based). */
-  salvar(
+  public async salvar(
     nome: string,
     tipoFila: TipoFila,
     dispositivo?: DispositivoIdentificado,
@@ -28,19 +28,19 @@ export class UsuarioServices {
   }
 
   /** Busca o usuário aguardando (ou na cabine) na fila real com sua posição atual (começa em 1). */
-  buscarPorUsuario(usuarioId: number): UsuarioNaFila {
+  public buscarPorUsuario(usuarioId: number): UsuarioNaFila {
     const usuario = this.filaService.buscarReal(usuarioId);
     if (!usuario) throw new NaoEncontradoError("Usuário na fila", usuarioId);
     return usuario;
   }
 
   /** Quem é o próximo a votar segundo o GerenciadorFilas. */
-  proximoAVotar(): UsuarioJSON | null {
+  public proximoAVotar(): UsuarioJSON | null {
     return this.filaService.proximoDaVez();
   }
 
   /** Registra o voto validando candidato, duplicidade de usuário/dispositivo e vez na fila. */
-  votar(
+  public async votar(
     usuarioId: number,
     candidatoId: number,
     dispositivo?: DispositivoIdentificado,
@@ -55,7 +55,7 @@ export class UsuarioServices {
   }
 
   /** Permite ao usuário desistir/sair da fila antes de votar (logout). */
-  sairDaFila(usuarioId: number, tempoRequisicaoMs?: number): Promise<UsuarioJSON> {
+  public sairDaFila(usuarioId: number, tempoRequisicaoMs?: number): Promise<UsuarioJSON> {
     const existente = this.filaService.buscarReal(usuarioId);
     if (!existente) throw new NaoEncontradoError("Usuário na fila", usuarioId);
     return this.filaService.remover(usuarioId, undefined, tempoRequisicaoMs);

@@ -9,7 +9,7 @@ export class AuthController {
    * POST /auth/login e POST /api/v1/auth/login
    * Realiza login administrativo gerando token de autorização Bearer.
    */
-  async login(req: Request, res: Response): Promise<void> {
+  public async login(req: Request, res: Response): Promise<void> {
     const loginOuNome = req.body?.nome ?? req.body?.login;
     const sessao = await this.auth.login(loginOuNome, req.body?.senha);
     if (!sessao) {
@@ -22,7 +22,7 @@ export class AuthController {
    * GET /auth/me e GET /api/v1/auth/me
    * Inspeciona sessão do administrador autenticado.
    */
-  me(req: Request, res: Response): void {
+  public me(req: Request, res: Response): void {
     const admin = this.auth.verificar(tokenDaRequisicao(req));
     if (!admin) {
       throw new NaoAutorizadoError("Sessão expirada");
