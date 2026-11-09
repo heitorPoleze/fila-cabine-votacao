@@ -145,9 +145,12 @@ export class DispositivoService {
       normalizarMac(typeof body.mac === "string" ? body.mac : null);
     const mac = macExplicito ?? (await resolverMacRedeLocal(ip));
 
+    const query = (req.query && typeof req.query === "object" ? req.query : {}) as Record<string, unknown>;
     const tokenUuidRaw =
       primeiroHeader(req.headers["x-device-token"]) ??
       primeiroHeader(req.headers["x-device-id"]) ??
+      (typeof query.token === "string" ? query.token.trim() : null) ??
+      (typeof query.dispositivoToken === "string" ? query.dispositivoToken.trim() : null) ??
       (typeof body.dispositivoToken === "string" ? body.dispositivoToken.trim() : null) ??
       (typeof body.tokenDispositivo === "string" ? body.tokenDispositivo.trim() : null);
     const tokenUuid = tokenUuidRaw && tokenUuidRaw.length > 0 ? tokenUuidRaw.slice(0, 100) : null;
@@ -210,7 +213,9 @@ export class DispositivoService {
     const tokenUuid = tokenUuidRaw && tokenUuidRaw.length > 0 ? tokenUuidRaw.slice(0, 100) : null;
 
     const userAgent = primeiroHeader(req.headers["user-agent"]);
+    const secChUa = primeiroHeader(req.headers["sec-ch-ua"]) ?? "";
     const secChUaPlatform = primeiroHeader(req.headers["sec-ch-ua-platform"]);
+    const secChUaMobile = primeiroHeader(req.headers["sec-ch-ua-mobile"]) ?? "";
     const acceptLanguage = primeiroHeader(req.headers["accept-language"]) ?? "";
     const clientFp =
       primeiroHeader(req.headers["x-device-fingerprint"]) ??
@@ -220,7 +225,9 @@ export class DispositivoService {
       (typeof extra?.nomeDispositivo === "string" ? extra.nomeDispositivo : null);
 
     const nomeDispositivo = extrairNomeDispositivo(userAgent, secChUaPlatform, nomeExplicito);
-    const fingerprint = sha256([userAgent ?? "", acceptLanguage, secChUaPlatform ?? "", clientFp].join("|"));
+    const fingerprint = sha256(
+      [userAgent ?? "", acceptLanguage, secChUa, secChUaPlatform ?? "", secChUaMobile, clientFp].join("|"),
+    );
 
     const chaveIdentidade = tokenUuid
       ? `token:${tokenUuid}`

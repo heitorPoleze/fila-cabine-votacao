@@ -1186,7 +1186,16 @@ export class FilaService extends EventEmitter {
       dispositivo,
     );
     await this.repo.inserir(usuario);
-    ctx.proximaSenha[tipoFila]++;
+
+    // Se o banco foi resetado externamente (AUTO_INCREMENT voltou para 1) enquanto o servidor estava rodando,
+    // limpa qualquer estado residual em memória (ex.: eleitor antigo preso em naCabine) antes de enfileirar.
+    if (!ctx.ehMock && usuario.id === 1 && (ctx.naCabine !== null || ctx.totalAguardando > 0)) {
+      ctx.resetarMemoria();
+      usuario.senha = 1;
+      usuario.posicaoNaFila = 1;
+    }
+
+    ctx.proximaSenha[tipoFila] = Math.max(ctx.proximaSenha[tipoFila], usuario.senha) + 1;
     fila.enfileirar(usuario);
     return usuario;
   }

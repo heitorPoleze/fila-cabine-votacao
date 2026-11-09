@@ -66,6 +66,26 @@ export async function resetarBanco(): Promise<void> {
     console.log(`[db:reset] Administrador padrão garantido (login: "${env.ADMIN_USER}").`);
   }
 
+  // Notifica o servidor em execução (se estiver ativo) para limpar o estado em memória (naCabine e filas)
+  try {
+    const sessao = await authService.login(env.ADMIN_USER, env.ADMIN_PASSWORD);
+    if (sessao) {
+      const res = await fetch(`http://127.0.0.1:${env.PORT}/fila/reiniciar?escopo=real`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${sessao.token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ escopo: "real" }),
+      });
+      if (res.ok) {
+        console.log(`[db:reset] Memória do servidor ativo (porta ${env.PORT}) sincronizada e limpa.`);
+      }
+    }
+  } catch {
+    // Servidor não está rodando no momento; nada a sincronizar em memória
+  }
+
   console.log(`[db:reset] Banco de dados "${env.DB_NAME}" resetado com sucesso!`);
 }
 

@@ -128,6 +128,8 @@ export class FilaAdminController {
   }
 
   async statusDispositivo(req: Request, res: Response): Promise<void> {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.setHeader("Pragma", "no-cache");
     const info = obterDispositivo(req) ?? (await this.dispositivoService.identificarRequisicao(req));
     res.status(200).json(await this.dispositivoService.consultarStatus(info));
   }

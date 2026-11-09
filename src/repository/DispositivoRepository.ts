@@ -28,19 +28,28 @@ export class DispositivoRepository {
     if (tokenUuid) {
       condicoes.push("token_uuid = ?");
       params.push(tokenUuid);
-    } else {
-      const ip = sanitizarTexto(info.ip, 45);
-      const fingerprint = sanitizarTexto(info.fingerprint, 64);
-      if (ip && fingerprint) {
-        condicoes.push("(ip = ? AND fingerprint = ? AND token_uuid IS NULL)");
-        params.push(ip, fingerprint);
-      }
+    }
+
+    const ip = sanitizarTexto(info.ip, 45);
+    const fingerprint = sanitizarTexto(info.fingerprint, 64);
+    if (ip && fingerprint) {
+      condicoes.push("(ip = ? AND fingerprint = ?)");
+      params.push(ip, fingerprint);
     }
 
     const mac = sanitizarTexto(info.mac, 20);
     if (mac) {
       condicoes.push("mac = ?");
       params.push(mac);
+    }
+
+    // Se é um dispositivo com IP e nome de dispositivo conhecidos (ex: desktop local)
+    if (ip && ip !== "0.0.0.0") {
+      const nomeDisp = sanitizarTexto(info.nomeDispositivo, 200);
+      if (nomeDisp) {
+        condicoes.push("(ip = ? AND nome_dispositivo = ?)");
+        params.push(ip, nomeDisp);
+      }
     }
 
     const [rows] = await pool.query<DispositivoVotanteRow[]>(
