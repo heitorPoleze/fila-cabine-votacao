@@ -70,7 +70,11 @@ export async function resetarBanco(): Promise<void> {
 }
 
 // Execução direta via CLI
-resetarBanco().catch((err) => {
-  console.error("[db:reset] Falha ao resetar o banco de dados:", err);
-  process.exit(1);
-});
+resetarBanco()
+  .then(() => {
+    process.exit(0);
+  })
+  .catch((err) => {
+    console.error("[db:reset] Falha ao resetar o banco de dados:", err);
+    process.exit(1);
+  });
