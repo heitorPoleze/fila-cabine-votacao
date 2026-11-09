@@ -156,12 +156,22 @@ CREATE TABLE IF NOT EXISTS administrador (
   CONSTRAINT uq_administrador_login UNIQUE (login)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
--- Dados iniciais (INSERT IGNORE: idempotente ao reiniciar/migrar)
-INSERT IGNORE INTO partido (digito, nome) VALUES
-  ('13', 'Partido dos Trabalhadores'),
-  ('22', 'Partido Liberal');
+-- Dados iniciais (upsert: idempotente ao reiniciar/migrar e atualiza bancos já existentes)
+INSERT INTO partido (digito, nome) VALUES
+  ('99', 'PC'),
+  ('01', 'MM')
+ON DUPLICATE KEY UPDATE nome = VALUES(nome);
 
-INSERT IGNORE INTO candidato (id, nome, url_foto, partido_digito) VALUES
+INSERT INTO candidato (id, nome, url_foto, partido_digito) VALUES
   (1, 'Anular', NULL, NULL),
-  (2, 'Lula', 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/Foto_oficial_de_Luiz_In%C3%A1cio_Lula_da_Silva_%28ombros%29_denoise.jpg/500px-Foto_oficial_de_Luiz_In%C3%A1cio_Lula_da_Silva_%28ombros%29_denoise.jpg', '13'),
-  (3, 'Flávio Bolsonaro', 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Foto_oficial_do_senador_Fl%C3%A1vio_Bolsonaro_%28v._AgSen%29_%283x4%29.jpg/500px-Foto_oficial_do_senador_Fl%C3%A1vio_Bolsonaro_%28v._AgSen%29_%283x4%29.jpg', '22');
+  (2, 'Bolso Tse Tung', 'https://preview.redd.it/tem-tse-tung-e-bolso-tse-tung-v0-clr6bxrtoeia1.jpg?width=538&format=pjpg&auto=webp&s=844eeed6eaa81ad6763a2115f678b29303ad4058', '99'),
+  (3, 'Macaco Malvado', 'https://i.pinimg.com/236x/fd/78/95/fd78953e5ae0690195fbae31f5c9be1d.jpg', '01')
+ON DUPLICATE KEY UPDATE
+  nome = VALUES(nome),
+  url_foto = VALUES(url_foto),
+  partido_digito = VALUES(partido_digito);
+
+-- Remove partidos antigos que não são mais usados por nenhum candidato
+DELETE FROM partido
+ WHERE digito NOT IN ('99', '01')
+   AND digito NOT IN (SELECT partido_digito FROM (SELECT DISTINCT partido_digito FROM candidato WHERE partido_digito IS NOT NULL) AS usados);
