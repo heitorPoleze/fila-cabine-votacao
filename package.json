@@ -7,6 +7,7 @@
     "dev": "nodemon",
     "start": "tsx src/server.ts",
     "db:migrate": "tsx src/database/migrate.ts",
+    "db:reset": "tsx src/database/reset.ts",
     "postman:import": "tsx src/database/importar-postman.ts",
     "typecheck": "tsc --noEmit"
   },

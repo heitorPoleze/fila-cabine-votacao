@@ -33,6 +33,9 @@ cp .env.example .env
 # 3. Criar/sincronizar o banco de dados e todas as tabelas no MySQL
 npm run db:migrate
 
+# Resetar o banco de dados (recria tabelas e reaplica dados iniciais)
+npm run db:reset
+
 # 4. Gerar/sincronizar o collection do postman
 npm run postman:import
 ```
